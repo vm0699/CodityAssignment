@@ -1,0 +1,15 @@
+{
+  "name": "@pulse/worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pulse worker: claims jobs atomically, executes them concurrently, heartbeats, recovers orphans",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pulse/core": "*"
+  }
+}

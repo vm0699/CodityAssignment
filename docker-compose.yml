@@ -1,0 +1,82 @@
+version: "3.9"
+
+# Dev usage:      docker compose up -d db            (then run services with npm)
+# Full stack:     docker compose --profile full up -d --build
+# Scale workers:  docker compose --profile full up -d --scale worker=3
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pulse-db
+    environment:
+      POSTGRES_USER: pulse
+      POSTGRES_PASSWORD: pulse
+      POSTGRES_DB: pulse
+    ports:
+      - "5433:5432"
+    volumes:
+      - pulse-pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulse -d pulse"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://pulse:pulse@db:5432/pulse
+      API_PORT: 4000
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      CORS_ORIGIN: http://localhost:8080
+      RUN_MIGRATIONS: "true"
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      DATABASE_URL: postgres://pulse:pulse@db:5432/pulse
+      WORKER_CONCURRENCY: 5
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  scheduler:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/scheduler/Dockerfile
+    environment:
+      DATABASE_URL: postgres://pulse:pulse@db:5432/pulse
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      replicas: 2   # demonstrates leader election — only one is active at a time
+
+  web:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: http://localhost:4000
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  pulse-pgdata:

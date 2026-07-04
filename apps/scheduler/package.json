@@ -1,0 +1,19 @@
+{
+  "name": "@pulse/scheduler",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pulse scheduler: promotes due jobs, materialises cron schedules; leader-elected via advisory lock",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pulse/core": "*",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10"
+  }
+}

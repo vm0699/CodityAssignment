@@ -1,0 +1,493 @@
+openapi: 3.0.3
+info:
+  title: Pulse — Distributed Job Scheduler API
+  version: "1.0.0"
+  description: >
+    REST API for Pulse. See docs/API.md for prose documentation and RBAC
+    semantics. Full detail on every field lives in apps/api/src/validate.ts.
+servers:
+  - url: http://localhost:4000/api
+    description: Local development
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, example: VALIDATION_ERROR }
+            message: { type: string }
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  path: { type: string }
+                  message: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+    Organization:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+    Project:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+    RetryPolicy:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        strategy: { type: string, enum: [fixed, linear, exponential] }
+        max_attempts: { type: integer }
+        base_delay_ms: { type: integer }
+        max_delay_ms: { type: integer }
+        jitter_factor: { type: number }
+    Queue:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        priority: { type: integer }
+        max_concurrency: { type: integer }
+        is_paused: { type: boolean }
+        retry_policy_id: { type: string, format: uuid, nullable: true }
+        rate_limit_per_second: { type: integer, nullable: true }
+    JobStatus:
+      type: string
+      enum: [scheduled, queued, claimed, running, completed, failed, dead_letter, cancelled]
+    Job:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        queue_id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        type: { type: string }
+        payload: { type: object }
+        status: { $ref: '#/components/schemas/JobStatus' }
+        priority: { type: integer }
+        attempt: { type: integer }
+        max_attempts: { type: integer, nullable: true }
+        run_at: { type: string, format: date-time }
+        timeout_ms: { type: integer }
+        idempotency_key: { type: string, nullable: true }
+        pending_dependencies: { type: integer }
+        worker_id: { type: string, format: uuid, nullable: true }
+        output: { type: object, nullable: true }
+        last_error: { type: string, nullable: true }
+        failure_summary: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+    JobCreate:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string }
+        payload: { type: object }
+        priority: { type: integer }
+        delayMs: { type: integer }
+        runAt: { type: string, format: date-time }
+        timeoutMs: { type: integer }
+        maxAttempts: { type: integer }
+        idempotencyKey: { type: string }
+        dependsOn:
+          type: array
+          items: { type: string, format: uuid }
+    Schedule:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        cron_expression: { type: string }
+        timezone: { type: string }
+        job_type: { type: string }
+        status: { type: string, enum: [active, paused] }
+        next_run_at: { type: string, format: date-time }
+    Worker:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string, enum: [online, draining, offline, dead] }
+        concurrency: { type: integer }
+        running_jobs: { type: integer }
+        seconds_since_heartbeat: { type: integer }
+    DlqEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        job_id: { type: string, format: uuid }
+        reason: { type: string }
+        error: { type: string, nullable: true }
+        failure_summary: { type: string, nullable: true }
+        attempts_made: { type: integer }
+        payload_snapshot: { type: object }
+        moved_at: { type: string, format: date-time }
+        requeued_at: { type: string, format: date-time, nullable: true }
+  parameters:
+    limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 25 }
+    offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user (and starter organization)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, name, password]
+              properties:
+                email: { type: string, format: email }
+                name: { type: string }
+                password: { type: string, minLength: 8 }
+                organizationName: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+                  organization: { $ref: '#/components/schemas/Organization' }
+        '409': { description: Email already registered, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/login:
+    post:
+      summary: Log in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+        '401': { description: Invalid credentials }
+  /auth/me:
+    get:
+      summary: Current user profile and organization memberships
+      responses:
+        '200': { description: OK }
+  /projects:
+    get:
+      summary: List projects the caller belongs to
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Project' }
+  /projects/orgs/{orgId}:
+    post:
+      summary: Create a project in an organization (requires admin role)
+      parameters:
+        - { name: orgId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                name: { type: string }
+                slug: { type: string }
+                description: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+  /projects/{projectId}/queues:
+    get:
+      summary: List queues in a project
+      parameters:
+        - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Queue' }
+    post:
+      summary: Create a queue (requires member role)
+      parameters:
+        - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                priority: { type: integer }
+                maxConcurrency: { type: integer }
+                retryPolicyId: { type: string, format: uuid, nullable: true }
+                rateLimitPerSecond: { type: integer, nullable: true }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Queue' }
+  /queues/{queueId}/pause:
+    post:
+      summary: Pause a queue (stop claiming from it)
+      parameters:
+        - { name: queueId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: OK }
+  /queues/{queueId}/resume:
+    post:
+      summary: Resume a paused queue
+      parameters:
+        - { name: queueId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: OK }
+  /queues/{queueId}/jobs:
+    post:
+      summary: Create a job on a queue
+      parameters:
+        - { name: queueId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JobCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '200':
+          description: Deduplicated (idempotency key collision) — returns the existing job
+  /queues/{queueId}/jobs/batch:
+    post:
+      summary: Create up to 500 jobs atomically, sharing one batch id
+      parameters:
+        - { name: queueId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [jobs]
+              properties:
+                jobs:
+                  type: array
+                  maxItems: 500
+                  items: { $ref: '#/components/schemas/JobCreate' }
+      responses:
+        '201': { description: Created }
+  /projects/{projectId}/jobs:
+    get:
+      summary: List/filter/paginate jobs in a project
+      parameters:
+        - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: queueId, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string }, description: "comma-separated JobStatus values" }
+        - { name: type, in: query, schema: { type: string } }
+        - { name: search, in: query, schema: { type: string } }
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Job' }
+                  pagination:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      limit: { type: integer }
+                      offset: { type: integer }
+  /jobs/{jobId}:
+    get:
+      summary: Job detail with executions and dependencies
+      parameters:
+        - { name: jobId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: OK }
+  /jobs/{jobId}/logs:
+    get:
+      summary: Structured log lines for a job
+      parameters:
+        - { name: jobId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: afterId, in: query, schema: { type: integer, default: 0 } }
+      responses:
+        '200': { description: OK }
+  /jobs/{jobId}/cancel:
+    post:
+      summary: Cancel a non-terminal job (cascades to dependents)
+      parameters:
+        - { name: jobId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: OK }
+        '409': { description: Job is already in a terminal state }
+  /jobs/{jobId}/retry:
+    post:
+      summary: Immediately requeue a failed/dead-lettered/cancelled/scheduled job
+      parameters:
+        - { name: jobId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: OK }
+  /projects/{projectId}/schedules:
+    get:
+      summary: List recurring cron schedules
+      parameters:
+        - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create a recurring cron schedule
+      parameters:
+        - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [queueId, name, cronExpression, jobType]
+              properties:
+                queueId: { type: string, format: uuid }
+                name: { type: string }
+                cronExpression: { type: string }
+                timezone: { type: string }
+                jobType: { type: string }
+                payload: { type: object }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Schedule' }
+        '400': { description: Invalid cron expression or timezone }
+  /workers:
+    get:
+      summary: Worker fleet status
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Worker' }
+  /projects/{projectId}/dlq:
+    get:
+      summary: Dead Letter Queue entries
+      parameters:
+        - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/DlqEntry' }
+  /dlq/{entryId}/requeue:
+    post:
+      summary: Requeue the underlying job from a DLQ entry
+      parameters:
+        - { name: entryId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: OK }
+  /projects/{projectId}/metrics/overview:
+    get:
+      summary: Dashboard overview metrics
+      parameters:
+        - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: OK }
+  /projects/{projectId}/metrics/throughput:
+    get:
+      summary: Time-bucketed throughput series
+      parameters:
+        - { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: windowMinutes, in: query, schema: { type: integer, default: 60 } }
+        - { name: bucketSeconds, in: query, schema: { type: integer, default: 60 } }
+      responses:
+        '200': { description: OK }
+  /health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        '200': { description: OK }
+        '503': { description: Database unreachable }
