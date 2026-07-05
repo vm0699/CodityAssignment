@@ -66,7 +66,7 @@ export default function QueuesPage() {
         {queues?.data.length ? (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-400">
+              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-4 py-3">Queue</th>
                 <th className="px-3 py-3 text-right">Priority</th>
                 <th className="px-3 py-3 text-right">Concurrency</th>
@@ -83,13 +83,13 @@ export default function QueuesPage() {
                 const s = stats?.data.find((x) => x.queue_id === queue.id);
                 const policy = policies?.data.find((p) => p.id === queue.retry_policy_id);
                 return (
-                  <tr key={queue.id} className="border-b border-surface-200 last:border-0 hover:bg-surface-50">
+                  <tr key={queue.id} className="border-b border-surface-200 last:border-0 transition-colors hover:bg-surface-50">
                     <td className="px-4 py-3">
                       <div className="font-medium text-slate-800">
                         {queue.name}
                         {queue.is_paused && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">paused</span>}
                       </div>
-                      {queue.description && <div className="text-xs text-slate-400">{queue.description}</div>}
+                      {queue.description && <div className="text-xs text-slate-500">{queue.description}</div>}
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-slate-700">{queue.priority}</td>
                     <td className="px-3 py-3 text-right font-mono text-slate-700">{queue.max_concurrency}</td>
@@ -101,15 +101,15 @@ export default function QueuesPage() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <button title={queue.is_paused ? 'Resume' : 'Pause'} onClick={() => void togglePause(queue)}
-                          className="rounded p-1.5 text-slate-400 hover:bg-surface-200 hover:text-slate-800">
+                          className="rounded p-1.5 text-slate-500 hover:bg-surface-200 hover:text-slate-800">
                           {queue.is_paused ? <Play size={15} /> : <Pause size={15} />}
                         </button>
                         <button title="Configure" onClick={() => setEditing(queue)}
-                          className="rounded p-1.5 text-slate-400 hover:bg-surface-200 hover:text-slate-800">
+                          className="rounded p-1.5 text-slate-500 hover:bg-surface-200 hover:text-slate-800">
                           <Settings2 size={15} />
                         </button>
                         <button title="Delete" onClick={() => void remove(queue)}
-                          className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
+                          className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600">
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -138,7 +138,7 @@ export default function QueuesPage() {
         {policies?.data.length ? (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-400">
+              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-4 py-3">Name</th>
                 <th className="px-3 py-3">Strategy</th>
                 <th className="px-3 py-3 text-right">Max attempts</th>
@@ -149,7 +149,7 @@ export default function QueuesPage() {
             </thead>
             <tbody>
               {policies.data.map((p) => (
-                <tr key={p.id} className="border-b border-surface-200 last:border-0 hover:bg-surface-50">
+                <tr key={p.id} className="border-b border-surface-200 last:border-0 transition-colors hover:bg-surface-50">
                   <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
                   <td className="px-3 py-3"><span className="rounded bg-surface-200 px-2 py-0.5 text-xs text-slate-600">{p.strategy}</span></td>
                   <td className="px-3 py-3 text-right font-mono text-slate-700">{p.max_attempts}</td>

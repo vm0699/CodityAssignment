@@ -110,3 +110,38 @@ export function useDocumentTitle(title: string): void {
     document.title = `${title} · Pulse`;
   }, [title]);
 }
+
+/**
+ * Animates a displayed number smoothly toward `target` whenever it changes,
+ * instead of snapping — used for the KPI hero numbers so live updates read
+ * as motion rather than a flicker. Non-numeric targets (e.g. the "—"
+ * placeholder shown before first load) pass through untouched.
+ */
+export function useCountUp(target: number | string, durationMs = 500): number | string {
+  const [display, setDisplay] = useState(target);
+  const fromRef = useRef(typeof target === 'number' ? target : 0);
+
+  useEffect(() => {
+    if (typeof target !== 'number') {
+      setDisplay(target);
+      return;
+    }
+    const from = typeof fromRef.current === 'number' ? fromRef.current : 0;
+    if (from === target) return;
+    const start = performance.now();
+    let frame: number;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - (1 - t) * (1 - t); // ease-out
+      const value = Math.round(from + (target - from) * eased);
+      setDisplay(value);
+      if (t < 1) frame = requestAnimationFrame(tick);
+      else fromRef.current = target;
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
+
+  return display;
+}

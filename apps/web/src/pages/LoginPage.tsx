@@ -70,7 +70,7 @@ export default function LoginPage({ onAuthed }: { onAuthed: () => void }) {
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword((s) => !s)}
-                  className="absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500 hover:text-slate-600"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -83,7 +83,7 @@ export default function LoginPage({ onAuthed }: { onAuthed: () => void }) {
             </Button>
           </form>
           <button
-            className="mt-4 w-full text-center text-xs text-slate-400 hover:text-slate-700"
+            className="mt-4 w-full text-center text-xs text-slate-500 hover:text-slate-700"
             onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(null); }}
           >
             {mode === 'login' ? "Don't have an account? Register" : 'Already registered? Sign in'}

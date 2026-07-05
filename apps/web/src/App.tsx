@@ -1,11 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Activity, AlertOctagon, CalendarClock, Cpu, LayoutDashboard, List, Layers, LogOut, Menu, Terminal, X, Zap,
+  AlertOctagon, CalendarClock, Cpu, LayoutDashboard, List, Layers, LogOut, Menu, Terminal, X, Zap,
 } from 'lucide-react';
 import { api, getToken, setToken } from './api';
 import { useLiveEvents } from './hooks';
 import type { Org, Project, User } from './types';
+import { HeartbeatLine } from './ui';
 import LoginPage from './pages/LoginPage';
 import OverviewPage from './pages/OverviewPage';
 import QueuesPage from './pages/QueuesPage';
@@ -33,6 +35,32 @@ export function useApp(): AppContextValue {
   return ctx;
 }
 
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+      >
+        <Routes location={location}>
+          <Route path="/" element={<OverviewPage />} />
+          <Route path="/queues" element={<QueuesPage />} />
+          <Route path="/jobs" element={<JobsPage />} />
+          <Route path="/schedules" element={<SchedulesPage />} />
+          <Route path="/workers" element={<WorkersPage />} />
+          <Route path="/dlq" element={<DlqPage />} />
+          <Route path="/activity" element={<ActivityPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export default function App() {
   const [authed, setAuthed] = useState<boolean>(() => Boolean(getToken()));
   const [user, setUser] = useState<User | null>(null);
@@ -42,6 +70,7 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const setProjectId = useCallback((id: string) => {
     localStorage.setItem('pulse_project', id);
@@ -92,8 +121,11 @@ export default function App() {
 
   if (booting) {
     return (
-      <div className="flex h-screen items-center justify-center bg-surface-50 text-slate-400">
-        <Zap size={18} className="mr-2 animate-pulse text-accent" /> Loading&hellip;
+      <div className="flex h-screen items-center justify-center bg-surface-50 text-slate-500">
+        <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}>
+          <Zap size={18} className="mr-2 inline text-accent" />
+        </motion.span>
+        Loading&hellip;
       </div>
     );
   }
@@ -124,7 +156,7 @@ export default function App() {
           <span className="text-lg font-bold tracking-tight text-slate-900">Pulse</span>
         </div>
         <button
-          className="rounded p-1 text-slate-400 hover:bg-surface-200 lg:hidden"
+          className="rounded p-1 text-slate-500 hover:bg-surface-200 lg:hidden"
           onClick={() => setMobileNavOpen(false)}
         >
           <X size={18} />
@@ -142,36 +174,53 @@ export default function App() {
         </select>
       </div>
       <nav className="flex-1 space-y-0.5 px-3 py-2">
-        {nav.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            onClick={() => setMobileNavOpen(false)}
-            className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                isActive ? 'bg-accent-soft text-accent' : 'text-slate-500 hover:bg-surface-200 hover:text-slate-800'
-              }`
-            }
-          >
-            <Icon size={16} />
-            {label}
-          </NavLink>
-        ))}
+        {nav.map(({ to, label, icon: Icon }) => {
+          const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              onClick={() => setMobileNavOpen(false)}
+              className={`relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                isActive ? 'text-accent' : 'text-slate-500 hover:bg-surface-200 hover:text-slate-800'
+              }`}
+            >
+              {isActive && (
+                <motion.span
+                  layoutId="nav-pill"
+                  className="absolute inset-0 rounded-lg bg-accent-soft"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
+              )}
+              <Icon size={16} className="relative z-10" />
+              <span className="relative z-10">{label}</span>
+            </NavLink>
+          );
+        })}
       </nav>
       <div className="border-t border-surface-300 px-4 py-3">
-        <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
-          <Activity size={12} className={liveConnected ? 'text-emerald-500' : 'text-slate-300'} />
-          {liveConnected ? 'Live updates connected' : 'Polling (WS reconnecting)'}
+        <div className="mb-2 flex items-center gap-2 text-xs text-slate-500">
+          {liveConnected ? (
+            <>
+              <HeartbeatLine width={44} height={16} color="#10b981" />
+              Live updates connected
+            </>
+          ) : (
+            <>
+              <span className="h-2 w-2 rounded-full bg-slate-300" />
+              Polling (WS reconnecting)
+            </>
+          )}
         </div>
         <div className="flex items-center justify-between">
           <div className="min-w-0">
             <div className="truncate text-sm font-medium text-slate-700">{user.name}</div>
-            <div className="truncate text-xs text-slate-400">{user.email}</div>
+            <div className="truncate text-xs text-slate-500">{user.email}</div>
           </div>
           <button
             title="Sign out"
-            className="rounded p-1.5 text-slate-400 hover:bg-surface-200 hover:text-slate-700"
+            className="rounded p-1.5 text-slate-500 hover:bg-surface-200 hover:text-slate-700"
             onClick={() => { setToken(null); window.dispatchEvent(new Event('pulse:logout')); }}
           >
             <LogOut size={15} />
@@ -190,14 +239,24 @@ export default function App() {
         </aside>
 
         {/* Mobile slide-over sidebar */}
-        {mobileNavOpen && (
-          <div className="fixed inset-0 z-40 lg:hidden">
-            <div className="absolute inset-0 bg-slate-900/30" onClick={() => setMobileNavOpen(false)} />
-            <aside className="relative flex h-full w-64 flex-col border-r border-surface-300 bg-surface-100 shadow-popover">
-              {sidebarContent}
-            </aside>
-          </div>
-        )}
+        <AnimatePresence>
+          {mobileNavOpen && (
+            <div className="fixed inset-0 z-40 lg:hidden">
+              <motion.div
+                className="absolute inset-0 bg-slate-900/30"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setMobileNavOpen(false)}
+              />
+              <motion.aside
+                className="relative flex h-full w-64 flex-col border-r border-surface-300 bg-surface-100 shadow-popover"
+                initial={{ x: -264 }} animate={{ x: 0 }} exit={{ x: -264 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 40 }}
+              >
+                {sidebarContent}
+              </motion.aside>
+            </div>
+          )}
+        </AnimatePresence>
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Mobile top bar */}
@@ -215,18 +274,9 @@ export default function App() {
           {/* Main */}
           <main className="flex-1 overflow-y-auto">
             {project ? (
-              <Routes>
-                <Route path="/" element={<OverviewPage />} />
-                <Route path="/queues" element={<QueuesPage />} />
-                <Route path="/jobs" element={<JobsPage />} />
-                <Route path="/schedules" element={<SchedulesPage />} />
-                <Route path="/workers" element={<WorkersPage />} />
-                <Route path="/dlq" element={<DlqPage />} />
-                <Route path="/activity" element={<ActivityPage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+              <AnimatedRoutes />
             ) : (
-              <div className="flex h-full items-center justify-center text-slate-400">
+              <div className="flex h-full items-center justify-center text-slate-500">
                 No projects yet — create one from the API or seed the demo data.
               </div>
             )}

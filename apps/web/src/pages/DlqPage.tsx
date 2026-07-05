@@ -70,7 +70,7 @@ export default function DlqPage() {
         {entries?.data.length ? (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-400">
+              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-4 py-3">Job</th>
                 <th className="px-3 py-3">Queue</th>
                 <th className="px-3 py-3 text-right">Attempts</th>
@@ -82,15 +82,15 @@ export default function DlqPage() {
             <tbody>
               {entries.data.map((entry) => (
                 <tr key={entry.id}
-                  className="cursor-pointer border-b border-surface-200 last:border-0 hover:bg-surface-50"
+                  className="cursor-pointer border-b border-surface-200 last:border-0 transition-colors hover:bg-surface-50"
                   onClick={() => setInspecting(entry)}>
                   <td className="px-4 py-3">
                     <div className="font-medium text-slate-800">{entry.job_type}</div>
-                    <div className="font-mono text-xs text-slate-400">{shortId(entry.job_id)}</div>
+                    <div className="font-mono text-xs text-slate-500">{shortId(entry.job_id)}</div>
                   </td>
                   <td className="px-3 py-3 text-slate-500">{entry.queue_name}</td>
                   <td className="px-3 py-3 text-right font-mono text-slate-700">{entry.attempts_made}</td>
-                  <td className="px-3 py-3 text-slate-400">
+                  <td className="px-3 py-3 text-slate-500">
                     {timeAgo(entry.moved_at)}
                     {entry.requeued_at && <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 text-xs text-sky-700">requeued</span>}
                   </td>
@@ -99,11 +99,11 @@ export default function DlqPage() {
                     {!entry.requeued_at && (
                       <div className="flex justify-end gap-1">
                         <button title="Requeue" onClick={() => void requeue(entry)}
-                          className="rounded p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600">
+                          className="rounded p-1.5 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600">
                           <RefreshCw size={15} />
                         </button>
                         <button title="Purge" onClick={() => void purge(entry)}
-                          className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
+                          className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600">
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -121,7 +121,7 @@ export default function DlqPage() {
       {inspecting && (
         <Modal title={`Dead letter · ${inspecting.job_type}`} onClose={() => setInspecting(null)} wide>
           <div className="space-y-4 text-sm">
-            <div className="text-slate-400">{inspecting.reason} · moved {timeAgo(inspecting.moved_at)}</div>
+            <div className="text-slate-500">{inspecting.reason} · moved {timeAgo(inspecting.moved_at)}</div>
             {inspecting.failure_summary && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
                 <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-red-500">Failure summary</div>
@@ -129,13 +129,13 @@ export default function DlqPage() {
               </div>
             )}
             <div>
-              <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Last error</h4>
+              <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Last error</h4>
               <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-lg border border-surface-200 bg-surface-50 p-3 font-mono text-xs text-red-600">
                 {inspecting.error ?? '—'}
               </pre>
             </div>
             <div>
-              <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Payload snapshot</h4>
+              <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Payload snapshot</h4>
               <pre className="max-h-40 overflow-auto rounded-lg border border-surface-200 bg-surface-50 p-3 font-mono text-xs text-slate-700">
                 {JSON.stringify(inspecting.payload_snapshot, null, 2)}
               </pre>

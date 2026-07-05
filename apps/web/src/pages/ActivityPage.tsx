@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
 import { useDocumentTitle, usePoll } from '../hooks';
@@ -112,16 +113,25 @@ export default function ActivityPage() {
               (<code>npm run dev:scheduler</code>) to see live events here.
             </div>
           )}
-          {events.map((e) => (
-            <div key={e.id} className="flex gap-2 py-0.5 hover:bg-white/5">
-              <span className="shrink-0 text-slate-500">{new Date(e.created_at).toLocaleTimeString()}</span>
-              <span className={`shrink-0 w-12 uppercase ${LEVEL_COLOR[e.level] ?? 'text-slate-400'}`}>{e.level}</span>
-              <span className={`shrink-0 w-44 truncate ${COMPONENT_TONE[e.component] ?? 'text-slate-400'}`}>
-                {e.component}
-              </span>
-              <span className="text-slate-300">{e.message}</span>
-            </div>
-          ))}
+          <AnimatePresence initial={false}>
+            {events.map((e) => (
+              <motion.div
+                key={e.id}
+                layout
+                initial={{ opacity: 0, x: -8, backgroundColor: 'rgba(79,70,229,0.25)' }}
+                animate={{ opacity: 1, x: 0, backgroundColor: 'rgba(79,70,229,0)' }}
+                transition={{ duration: 0.5 }}
+                className="flex gap-2 rounded py-0.5 hover:bg-white/5"
+              >
+                <span className="shrink-0 text-slate-500">{new Date(e.created_at).toLocaleTimeString()}</span>
+                <span className={`w-12 shrink-0 uppercase ${LEVEL_COLOR[e.level] ?? 'text-slate-500'}`}>{e.level}</span>
+                <span className={`w-44 shrink-0 truncate ${COMPONENT_TONE[e.component] ?? 'text-slate-500'}`}>
+                  {e.component}
+                </span>
+                <span className="text-slate-300">{e.message}</span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </Card>
     </div>

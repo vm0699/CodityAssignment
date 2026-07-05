@@ -73,7 +73,7 @@ export default function JobsPage() {
         {jobs?.data.length ? (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-400">
+              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-4 py-3">Job</th>
                 <th className="px-3 py-3">Status</th>
                 <th className="px-3 py-3">Queue</th>
@@ -87,19 +87,19 @@ export default function JobsPage() {
               {jobs.data.map((job) => (
                 <tr
                   key={job.id}
-                  className="cursor-pointer border-b border-surface-200 last:border-0 hover:bg-surface-50"
+                  className="cursor-pointer border-b border-surface-200 last:border-0 transition-colors hover:bg-surface-50"
                   onClick={() => setSelected(job.id)}
                 >
                   <td className="px-4 py-2.5">
                     <div className="font-medium text-slate-800">{job.type}</div>
-                    <div className="font-mono text-xs text-slate-400">{shortId(job.id)}{job.batch_id ? ' · batch' : ''}{job.scheduled_job_id ? ' · cron' : ''}</div>
+                    <div className="font-mono text-xs text-slate-500">{shortId(job.id)}{job.batch_id ? ' · batch' : ''}{job.scheduled_job_id ? ' · cron' : ''}</div>
                   </td>
                   <td className="px-3 py-2.5"><StatusBadge status={job.status} /></td>
                   <td className="px-3 py-2.5 text-slate-500">{job.queue_name}</td>
                   <td className="px-3 py-2.5 text-right font-mono text-slate-700">{job.priority}</td>
                   <td className="px-3 py-2.5 text-right font-mono text-slate-700">{job.attempt}{job.max_attempts ? `/${job.max_attempts}` : ''}</td>
-                  <td className="px-3 py-2.5 text-slate-400">{timeAgo(job.created_at)}</td>
-                  <td className="px-3 py-2.5 text-slate-400">
+                  <td className="px-3 py-2.5 text-slate-500">{timeAgo(job.created_at)}</td>
+                  <td className="px-3 py-2.5 text-slate-500">
                     {job.status === 'scheduled' ? `due ${timeAgo(job.run_at)}` : timeAgo(job.started_at ?? job.claimed_at)}
                   </td>
                 </tr>
@@ -172,10 +172,10 @@ function JobDetailModal({ jobId, onClose, onChanged }: { jobId: string; onClose:
       <div className="space-y-4 text-sm">
         <div className="flex flex-wrap items-center gap-3">
           <StatusBadge status={job.status} />
-          <span className="text-slate-400">queue <span className="text-slate-700">{job.queue_name}</span></span>
-          <span className="text-slate-400">attempt <span className="font-mono text-slate-700">{job.attempt}{job.max_attempts ? `/${job.max_attempts}` : ''}</span></span>
-          <span className="text-slate-400">priority <span className="font-mono text-slate-700">{job.priority}</span></span>
-          <span className="text-slate-400">timeout <span className="font-mono text-slate-700">{formatDuration(job.timeout_ms)}</span></span>
+          <span className="text-slate-500">queue <span className="text-slate-700">{job.queue_name}</span></span>
+          <span className="text-slate-500">attempt <span className="font-mono text-slate-700">{job.attempt}{job.max_attempts ? `/${job.max_attempts}` : ''}</span></span>
+          <span className="text-slate-500">priority <span className="font-mono text-slate-700">{job.priority}</span></span>
+          <span className="text-slate-500">timeout <span className="font-mono text-slate-700">{formatDuration(job.timeout_ms)}</span></span>
           <div className="ml-auto flex gap-2">
             {canRetry && (
               <Button variant="secondary" onClick={() => void act('retry')}>
@@ -200,13 +200,13 @@ function JobDetailModal({ jobId, onClose, onChanged }: { jobId: string; onClose:
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Payload</h4>
+            <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Payload</h4>
             <pre className="max-h-40 overflow-auto rounded-lg border border-surface-200 bg-surface-50 p-3 font-mono text-xs text-slate-700">
               {JSON.stringify(job.payload, null, 2)}
             </pre>
           </div>
           <div>
-            <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Output</h4>
+            <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Output</h4>
             <pre className="max-h-40 overflow-auto rounded-lg border border-surface-200 bg-surface-50 p-3 font-mono text-xs text-slate-700">
               {job.output ? JSON.stringify(job.output, null, 2) : '—'}
             </pre>
@@ -216,35 +216,35 @@ function JobDetailModal({ jobId, onClose, onChanged }: { jobId: string; onClose:
         {(job.dependencies.dependsOn.length > 0 || job.dependencies.dependents.length > 0) && (
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Depends on</h4>
+              <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Depends on</h4>
               {job.dependencies.dependsOn.map((d) => (
                 <div key={d.id} className="mb-1 flex items-center gap-2 text-xs">
                   <StatusBadge status={d.status} /> <span className="text-slate-700">{d.type}</span>
-                  <span className="font-mono text-slate-400">{shortId(d.id)}</span>
+                  <span className="font-mono text-slate-500">{shortId(d.id)}</span>
                 </div>
               ))}
-              {job.dependencies.dependsOn.length === 0 && <div className="text-xs text-slate-400">none</div>}
+              {job.dependencies.dependsOn.length === 0 && <div className="text-xs text-slate-500">none</div>}
             </div>
             <div>
-              <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Unblocks</h4>
+              <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Unblocks</h4>
               {job.dependencies.dependents.map((d) => (
                 <div key={d.id} className="mb-1 flex items-center gap-2 text-xs">
                   <StatusBadge status={d.status} /> <span className="text-slate-700">{d.type}</span>
-                  <span className="font-mono text-slate-400">{shortId(d.id)}</span>
+                  <span className="font-mono text-slate-500">{shortId(d.id)}</span>
                 </div>
               ))}
-              {job.dependencies.dependents.length === 0 && <div className="text-xs text-slate-400">none</div>}
+              {job.dependencies.dependents.length === 0 && <div className="text-xs text-slate-500">none</div>}
             </div>
           </div>
         )}
 
         <div>
-          <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Executions (retry history)</h4>
+          <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Executions (retry history)</h4>
           {job.executions.length ? (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-left text-slate-400">
+                  <tr className="text-left text-slate-500">
                     <th className="py-1 pr-3">Attempt</th>
                     <th className="py-1 pr-3">Status</th>
                     <th className="py-1 pr-3">Worker</th>
@@ -258,8 +258,8 @@ function JobDetailModal({ jobId, onClose, onChanged }: { jobId: string; onClose:
                     <tr key={e.id} className="border-t border-surface-200">
                       <td className="py-1.5 pr-3 font-mono text-slate-700">{e.attempt}</td>
                       <td className="py-1.5 pr-3"><StatusBadge status={e.status} /></td>
-                      <td className="py-1.5 pr-3 font-mono text-slate-400">{e.worker_id ? shortId(e.worker_id) : '—'}</td>
-                      <td className="py-1.5 pr-3 text-slate-400">{timeAgo(e.started_at)}</td>
+                      <td className="py-1.5 pr-3 font-mono text-slate-500">{e.worker_id ? shortId(e.worker_id) : '—'}</td>
+                      <td className="py-1.5 pr-3 text-slate-500">{timeAgo(e.started_at)}</td>
                       <td className="py-1.5 pr-3 font-mono text-slate-700">{e.duration_ms != null ? formatDuration(e.duration_ms) : '—'}</td>
                       <td className="max-w-[220px] truncate py-1.5 text-red-600" title={e.error ?? ''}>{e.error ?? '—'}</td>
                     </tr>
@@ -268,17 +268,17 @@ function JobDetailModal({ jobId, onClose, onChanged }: { jobId: string; onClose:
               </table>
             </div>
           ) : (
-            <div className="text-xs text-slate-400">not executed yet</div>
+            <div className="text-xs text-slate-500">not executed yet</div>
           )}
         </div>
 
         <div>
-          <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Logs</h4>
+          <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Logs</h4>
           <div className="max-h-56 overflow-auto rounded-lg border border-surface-200 bg-surface-50 p-3 font-mono text-xs">
             {logs?.data.length ? (
               logs.data.map((l) => (
                 <div key={l.id} className="flex gap-2 py-0.5">
-                  <span className="shrink-0 text-slate-400">{new Date(l.created_at).toLocaleTimeString()}</span>
+                  <span className="shrink-0 text-slate-500">{new Date(l.created_at).toLocaleTimeString()}</span>
                   <span className={`shrink-0 uppercase ${
                     l.level === 'error' ? 'text-red-600' : l.level === 'warn' ? 'text-amber-600' : 'text-sky-600'
                   }`}>{l.level}</span>
@@ -286,7 +286,7 @@ function JobDetailModal({ jobId, onClose, onChanged }: { jobId: string; onClose:
                 </div>
               ))
             ) : (
-              <span className="text-slate-400">no log lines yet</span>
+              <span className="text-slate-500">no log lines yet</span>
             )}
           </div>
         </div>

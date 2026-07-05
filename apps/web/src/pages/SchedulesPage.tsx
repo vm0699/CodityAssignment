@@ -62,7 +62,7 @@ export default function SchedulesPage() {
         {schedules?.data.length ? (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-400">
+              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-4 py-3">Schedule</th>
                 <th className="px-3 py-3">Cron</th>
                 <th className="px-3 py-3">Queue / type</th>
@@ -76,11 +76,11 @@ export default function SchedulesPage() {
               {schedules.data.map((s) => {
                 const queue = queues?.data.find((q) => q.id === s.queue_id);
                 return (
-                  <tr key={s.id} className="border-b border-surface-200 last:border-0 hover:bg-surface-50">
+                  <tr key={s.id} className="border-b border-surface-200 last:border-0 transition-colors hover:bg-surface-50">
                     <td className="px-4 py-3 font-medium text-slate-800">{s.name}</td>
                     <td className="px-3 py-3">
                       <code className="rounded bg-surface-200 px-1.5 py-0.5 font-mono text-xs text-sky-700">{s.cron_expression}</code>
-                      <div className="mt-0.5 text-xs text-slate-400">{s.cron_description !== s.cron_expression ? s.cron_description : ''} {s.timezone !== 'UTC' ? `(${s.timezone})` : ''}</div>
+                      <div className="mt-0.5 text-xs text-slate-500">{s.cron_description !== s.cron_expression ? s.cron_description : ''} {s.timezone !== 'UTC' ? `(${s.timezone})` : ''}</div>
                     </td>
                     <td className="px-3 py-3 text-slate-500">{queue?.name ?? '—'} · {s.job_type}</td>
                     <td className="px-3 py-3">
@@ -90,16 +90,16 @@ export default function SchedulesPage() {
                           : 'bg-amber-50 text-amber-700 ring-amber-200'
                       }`}>{s.status}</span>
                     </td>
-                    <td className="px-3 py-3 text-slate-400">{s.status === 'active' ? timeAgo(s.next_run_at) : '—'}</td>
-                    <td className="px-3 py-3 text-slate-400">{timeAgo(s.last_enqueued_at)}</td>
+                    <td className="px-3 py-3 text-slate-500">{s.status === 'active' ? timeAgo(s.next_run_at) : '—'}</td>
+                    <td className="px-3 py-3 text-slate-500">{timeAgo(s.last_enqueued_at)}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <button title={s.status === 'active' ? 'Pause' : 'Resume'} onClick={() => void toggle(s)}
-                          className="rounded p-1.5 text-slate-400 hover:bg-surface-200 hover:text-slate-800">
+                          className="rounded p-1.5 text-slate-500 hover:bg-surface-200 hover:text-slate-800">
                           {s.status === 'active' ? <Pause size={15} /> : <Play size={15} />}
                         </button>
                         <button title="Delete" onClick={() => void remove(s)}
-                          className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
+                          className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600">
                           <Trash2 size={15} />
                         </button>
                       </div>

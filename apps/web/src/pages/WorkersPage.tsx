@@ -28,7 +28,7 @@ export default function WorkersPage() {
         {workers?.data.length ? (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-400">
+              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-4 py-3">Worker</th>
                 <th className="px-3 py-3">Status</th>
                 <th className="px-3 py-3">Host / PID</th>
@@ -39,10 +39,10 @@ export default function WorkersPage() {
             </thead>
             <tbody>
               {workers.data.map((w) => (
-                <tr key={w.id} className="border-b border-surface-200 last:border-0 hover:bg-surface-50">
+                <tr key={w.id} className="border-b border-surface-200 last:border-0 transition-colors hover:bg-surface-50">
                   <td className="px-4 py-3">
                     <div className="font-medium text-slate-800">{w.name}</div>
-                    <div className="font-mono text-xs text-slate-400">{w.id.slice(0, 13)}</div>
+                    <div className="font-mono text-xs text-slate-500">{w.id.slice(0, 13)}</div>
                   </td>
                   <td className="px-3 py-3">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${WORKER_TONE[w.status]}`}>
