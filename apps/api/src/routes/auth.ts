@@ -8,6 +8,7 @@ import {
   findUserById,
   getPool,
   listOrganizationsForUser,
+  listProjectsForUser,
   provisionStarterWorkspace,
 } from '@pulse/core';
 import { requireAuth, signToken, type AuthedRequest } from '../auth.js';
@@ -17,6 +18,27 @@ import { loginSchema, registerSchema } from '../validate.js';
 const log = createLogger({ component: 'auth' });
 
 export const authRouter = Router();
+
+/**
+ * Backstop for accounts that predate the auto-provisioning feature (or hit
+ * some earlier failure during registration): if a user has an organization
+ * but zero projects anywhere, provision the starter workspace now instead of
+ * leaving them on an empty dashboard forever. Cheap to call on every
+ * login/me request — it's a no-op the moment any project exists.
+ */
+async function ensureStarterWorkspace(userId: string): Promise<void> {
+  try {
+    const pool = getPool();
+    const [orgs, projects] = await Promise.all([
+      listOrganizationsForUser(pool, userId),
+      listProjectsForUser(pool, userId),
+    ]);
+    if (orgs.length === 0 || projects.length > 0) return;
+    await provisionStarterWorkspace(pool, { orgId: orgs[0].id, userId });
+  } catch (err) {
+    log.error('failed to backstop-provision starter workspace', { userId, error: (err as Error).message });
+  }
+}
 
 authRouter.post(
   '/register',
@@ -64,6 +86,7 @@ authRouter.post(
     if (!user || !(await bcrypt.compare(body.password, user.password_hash))) {
       throw ApiError.unauthorized('Invalid email or password');
     }
+    await ensureStarterWorkspace(user.id);
     res.json({ token: signToken(user), user: { id: user.id, email: user.email, name: user.name } });
   }),
 );
@@ -74,6 +97,7 @@ authRouter.get(
   asyncHandler<AuthedRequest>(async (req, res) => {
     const user = await findUserById(getPool(), req.userId);
     if (!user) throw ApiError.unauthorized();
+    await ensureStarterWorkspace(user.id);
     const orgs = await listOrganizationsForUser(getPool(), user.id);
     res.json({
       user: { id: user.id, email: user.email, name: user.name },

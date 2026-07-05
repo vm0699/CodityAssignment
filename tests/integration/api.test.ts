@@ -2,9 +2,10 @@
  * API contract tests via supertest: auth, RBAC, CRUD, job submission
  * (immediate/delayed/batch/idempotent), filtering/pagination, error envelope.
  */
+import bcrypt from 'bcryptjs';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { closePool, getPool } from '@pulse/core';
+import { closePool, createOrganization, createUser, getPool } from '@pulse/core';
 import { createApp } from '../../apps/api/src/app';
 import { uniq } from './helpers';
 
@@ -123,6 +124,24 @@ describe('auth', () => {
       .send({ name: 'My Renamed Project', description: 'Customized after registration' })
       .expect(200);
     expect(renamed.body.name).toBe('My Renamed Project');
+  });
+
+  it('backstops pre-existing empty accounts on login (not just at registration time)', async () => {
+    // Simulate an account created before the auto-provisioning feature
+    // existed: a user + org with zero projects, built directly through the
+    // repos rather than the /register endpoint.
+    const pool = getPool();
+    const email = `${uniq('legacy')}@test.dev`;
+    const user = await createUser(pool, { email, name: 'Legacy User', passwordHash: await bcrypt.hash('password123', 4) });
+    await createOrganization(pool, { name: 'Legacy Org', slug: uniq('legacy-org'), createdBy: user.id });
+
+    const login = await request(app).post('/api/auth/login').send({ email, password: 'password123' }).expect(200);
+    const projects = await request(app)
+      .get('/api/projects')
+      .set('Authorization', `Bearer ${login.body.token}`)
+      .expect(200);
+    expect(projects.body.data).toHaveLength(1);
+    expect(projects.body.data[0].name).toBe('Getting Started');
   });
 });
 
