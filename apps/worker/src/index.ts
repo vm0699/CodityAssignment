@@ -7,7 +7,9 @@ import {
   envInt,
   getPool,
   loadEnv,
+  logSystemEvent,
   pruneHeartbeats,
+  pruneSystemEvents,
   recordHeartbeat,
   registerWorker,
   requeueOrphanedJobs,
@@ -44,6 +46,11 @@ const worker = await registerWorker(getPool(), {
   queueFilter: QUEUE_FILTER,
 });
 log.info(`worker ${worker.name} registered`, { id: worker.id, concurrency: CONCURRENCY });
+void logSystemEvent(getPool(), {
+  component: 'worker.lifecycle',
+  message: `Worker ${worker.name} registered (concurrency=${CONCURRENCY}${QUEUE_FILTER ? `, sharded to ${QUEUE_FILTER.length} queue(s)` : ''})`,
+  context: { workerId: worker.id, concurrency: CONCURRENCY, queueFilter: QUEUE_FILTER },
+});
 
 const inFlight = new Set<Promise<void>>();
 let draining = false;
@@ -85,9 +92,10 @@ const reaperTimer = setInterval(() => {
   }).catch((err) => log.warn('reaper sweep failed', { error: (err as Error).message }));
 }, REAPER_INTERVAL_MS);
 
-// --- Housekeeping: keep heartbeat history bounded ---
+// --- Housekeeping: keep heartbeat history and the activity feed bounded ---
 const pruneTimer = setInterval(() => {
   void pruneHeartbeats(getPool(), 24).catch(() => undefined);
+  void pruneSystemEvents(getPool(), 24).catch(() => undefined);
 }, 600_000);
 
 // --- Main claim/execute loop ---
@@ -105,7 +113,14 @@ async function mainLoop(): Promise<void> {
             .finally(() => inFlight.delete(promise));
           inFlight.add(promise);
         }
-        if (claimed > 0) log.info(`claimed ${claimed} job(s)`, { inFlight: inFlight.size });
+        if (claimed > 0) {
+          log.info(`claimed ${claimed} job(s)`, { inFlight: inFlight.size });
+          void logSystemEvent(getPool(), {
+            component: 'concurrency.claim',
+            message: `Worker ${worker.name.slice(0, 24)} atomically claimed ${claimed} job(s) (SKIP LOCKED) — ${inFlight.size}/${CONCURRENCY} slots busy`,
+            context: { workerId: worker.id, claimed, jobIds: jobs.map((j) => j.id) },
+          });
+        }
       } catch (err) {
         log.error('claim cycle failed', { error: (err as Error).message });
       }
@@ -127,6 +142,11 @@ async function shutdown(signal: string): Promise<void> {
   clearInterval(reaperTimer);
   clearInterval(pruneTimer);
   await setWorkerStatus(getPool(), worker.id, 'draining').catch(() => undefined);
+  await logSystemEvent(getPool(), {
+    component: 'worker.lifecycle',
+    message: `Worker ${worker.name} received ${signal} — draining ${inFlight.size} in-flight job(s) gracefully`,
+    context: { workerId: worker.id, inFlight: inFlight.size },
+  }).catch(() => undefined);
 
   const DRAIN_TIMEOUT_MS = envInt('WORKER_DRAIN_TIMEOUT_MS', 30_000);
   const drained = await Promise.race([
@@ -138,6 +158,11 @@ async function shutdown(signal: string): Promise<void> {
   }
 
   await setWorkerStatus(getPool(), worker.id, 'offline').catch(() => undefined);
+  await logSystemEvent(getPool(), {
+    component: 'worker.lifecycle',
+    message: `Worker ${worker.name} stopped cleanly${drained ? '' : ' (drain timeout — any still-running job will be recovered by the reaper)'}`,
+    context: { workerId: worker.id },
+  }).catch(() => undefined);
   await wakeSubscription.close();
   await closePool();
   log.info('worker stopped cleanly');

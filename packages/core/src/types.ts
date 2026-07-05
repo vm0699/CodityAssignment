@@ -197,11 +197,18 @@ export interface PulseEvent {
     | 'queue.updated'
     | 'worker.updated'
     | 'dlq.updated'
-    | 'schedule.updated';
+    | 'schedule.updated'
+    | 'system.log';
   projectId?: string;
   jobId?: string;
   queueId?: string;
   workerId?: string;
   status?: string;
   at: string;
+  // 'system.log' payload — carried inline so the dashboard's Activity feed
+  // can render it without a follow-up fetch.
+  id?: number;
+  level?: LogLevel;
+  component?: string;
+  message?: string;
 }

@@ -1,5 +1,6 @@
+import os from 'node:os';
 import pg from 'pg';
-import { closePool, createLogger, env, envInt, loadEnv, runMigrations } from '@pulse/core';
+import { closePool, createLogger, env, envInt, getPool, loadEnv, logSystemEvent, runMigrations } from '@pulse/core';
 import { materialiseCronSchedules, promoteDueJobs } from './tick.js';
 
 loadEnv();
@@ -48,6 +49,11 @@ async function mainLoop(): Promise<void> {
       isLeader = await tryBecomeLeader();
       if (isLeader) {
         log.info('acquired leadership — this instance is now active');
+        void logSystemEvent(getPool(), {
+          component: 'scheduler.leader-election',
+          message: `Scheduler instance pid=${process.pid} on ${os.hostname()} acquired leadership via pg_advisory_lock (active singleton; other replicas hot-standby)`,
+          context: { pid: process.pid, hostname: os.hostname() },
+        });
       } else {
         await sleep(2000);
         continue;

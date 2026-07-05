@@ -7,7 +7,7 @@ loadEnv();
 // bigint counts (used by aggregate queries) as numbers instead of strings.
 pg.types.setTypeParser(20, (v) => Number.parseInt(v, 10));
 
-export type Db = pg.Pool | pg.PoolClient;
+export type Db = pg.Pool | pg.PoolClient | pg.Client;
 
 let pool: pg.Pool | undefined;
 

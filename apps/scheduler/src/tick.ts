@@ -3,6 +3,7 @@ import {
   claimDueSchedules,
   createJob,
   createLogger,
+  logSystemEvent,
   nextCronOccurrence,
   publishEvent,
   publishWake,
@@ -28,7 +29,14 @@ export async function promoteDueJobs(): Promise<number> {
         status: 'queued',
       });
     }
-    if (rows.length > 0) await publishWake(client);
+    if (rows.length > 0) {
+      await publishWake(client);
+      await logSystemEvent(client, {
+        component: 'scheduler.promote',
+        message: `Promoted ${rows.length} due job(s) from scheduled -> queued (delay elapsed / retry backoff / dependencies released)`,
+        context: { jobIds: rows.map((r) => r.id) },
+      });
+    }
     return rows.length;
   });
 }
@@ -58,6 +66,11 @@ export async function materialiseCronSchedules(): Promise<number> {
       const next = nextCronOccurrence(schedule.cron_expression, schedule.timezone, new Date());
       await advanceSchedule(client, schedule.id, next);
       log.info(`fired schedule '${schedule.name}'`, { next: next.toISOString() });
+      await logSystemEvent(client, {
+        component: 'scheduler.cron',
+        message: `Cron schedule '${schedule.name}' (${schedule.cron_expression}) fired — next run ${next.toISOString()}`,
+        context: { scheduleId: schedule.id, nextRunAt: next.toISOString() },
+      });
     }
     return due.length;
   });

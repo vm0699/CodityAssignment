@@ -3,6 +3,7 @@ import type { Db } from '../db.js';
 import { withTransaction } from '../db.js';
 import { publishEvent, publishWake } from '../events.js';
 import { computeBackoffMs } from '../retry.js';
+import { logSystemEvent } from './system-events.js';
 import type { Job, JobStatus } from '../types.js';
 import { DEFAULT_RETRY_POLICY } from '../types.js';
 
@@ -423,6 +424,12 @@ export async function failJob(
     await cancelDependentsCascade(client, jobId, `dependency ${jobId} entered the dead letter queue`);
     await publishEvent(client, { kind: 'job.updated', projectId: job.project_id, jobId, queueId: job.queue_id, status: 'dead_letter' });
     await publishEvent(client, { kind: 'dlq.updated', projectId: job.project_id, jobId, queueId: job.queue_id });
+    await logSystemEvent(client, {
+      level: 'error',
+      component: 'reliability.dlq',
+      message: `Job ${jobId.slice(0, 8)} (${job.type}) exhausted ${maxAttempts} attempt(s) — moved to Dead Letter Queue`,
+      context: { jobId, queueId: job.queue_id, attempts: job.attempt },
+    });
     return { outcome: 'dead_letter', job: upd.rows[0] };
   });
 }
@@ -477,11 +484,18 @@ export async function retryJobNow(jobId: string, requeuedBy?: string): Promise<J
     const job: Job | undefined = rows[0];
     if (!job) return null;
     // Close out the active DLQ entry, if any (kept as audit history).
-    await client.query(
+    const dlqClosed = await client.query(
       `UPDATE dead_letter_jobs SET requeued_at = now(), requeued_by = $2
         WHERE job_id = $1 AND requeued_at IS NULL`,
       [jobId, requeuedBy ?? null],
     );
+    if ((dlqClosed.rowCount ?? 0) > 0) {
+      await logSystemEvent(client, {
+        component: 'reliability.dlq',
+        message: `Job ${jobId.slice(0, 8)} (${job.type}) manually requeued from the Dead Letter Queue`,
+        context: { jobId, queueId: job.queue_id },
+      });
+    }
     await publishEvent(client, { kind: 'job.updated', projectId: job.project_id, jobId, queueId: job.queue_id, status: 'queued' });
     await publishWake(client);
     return job;
@@ -528,6 +542,14 @@ export async function requeueOrphanedJobs(client: pg.PoolClient, leaseTimeoutMs:
   for (const workerId of ids) {
     await publishEvent(client, { kind: 'worker.updated', workerId, status: 'dead' });
   }
-  if (rows.length > 0) await publishWake(client);
+  if (rows.length > 0) {
+    await publishWake(client);
+    await logSystemEvent(client, {
+      level: 'warn',
+      component: 'reliability.reaper',
+      message: `Reaper detected ${ids.length} dead worker(s) (missed heartbeat lease) — requeued ${rows.length} orphaned job(s)`,
+      context: { deadWorkerIds: ids, requeuedJobIds: rows.map((r) => r.id) },
+    });
+  }
   return rows.map((r) => r.id);
 }

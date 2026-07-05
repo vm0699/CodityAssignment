@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { createLogger } from './logger.js';
+import { logSystemEvent } from './repos/system-events.js';
 
 const log = createLogger({ component: 'migrate' });
 
@@ -49,6 +50,16 @@ export async function runMigrations(databaseUrl: string): Promise<string[]> {
         await client.query('ROLLBACK');
         throw new Error(`Migration ${file} failed: ${(err as Error).message}`);
       }
+    }
+    // system_events exists by now on any run that reaches this point (it is
+    // itself created by 002_system_events.sql, applied earlier in this loop
+    // on a fresh database).
+    if (applied.length > 0) {
+      await logSystemEvent(client, {
+        component: 'migrate',
+        message: `Applied migration(s): ${applied.join(', ')}`,
+        context: { count: applied.length },
+      });
     }
   } finally {
     await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]).catch(() => undefined);

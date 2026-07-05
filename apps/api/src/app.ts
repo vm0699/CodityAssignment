@@ -11,6 +11,7 @@ import { dlqRouter, metricsRouter, projectDlqRouter, workersRouter } from './rou
 import { projectsRouter, retryPoliciesRouter } from './routes/projects.js';
 import { projectQueuesRouter, queuesRouter } from './routes/queues.js';
 import { projectSchedulesRouter, schedulesRouter } from './routes/schedules.js';
+import { systemRouter } from './routes/system.js';
 
 const log = createLogger({ component: 'api' });
 
@@ -60,6 +61,7 @@ export function createApp(): express.Express {
   app.use('/api/schedules', schedulesRouter);
   app.use('/api/workers', workersRouter);
   app.use('/api/dlq', dlqRouter);
+  app.use('/api/system', systemRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

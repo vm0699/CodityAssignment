@@ -19,3 +19,4 @@ export * from './repos/workers.js';
 export * from './repos/scheduled-jobs.js';
 export * from './repos/dlq.js';
 export * from './repos/metrics.js';
+export * from './repos/system-events.js';

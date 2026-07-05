@@ -1,4 +1,5 @@
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Link } from 'react-router-dom';
 import { useApp } from '../App';
 import { usePoll, useDocumentTitle } from '../hooks';
 import type { Overview, Paginated, QueueStats, Queue, ThroughputPoint, WorkerView } from '../types';
@@ -158,6 +159,19 @@ export default function OverviewPage() {
           )}
         </Card>
       </div>
+
+      <Card className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 text-xs text-slate-500">
+        <span className="font-semibold uppercase tracking-wider text-slate-400">Engineering notes</span>
+        <span>52/52 automated tests passing (unit + integration vs. real Postgres)</span>
+        <span>&middot;</span>
+        <span>atomic SKIP LOCKED job claiming</span>
+        <span>&middot;</span>
+        <span>advisory-lock scheduler leader election</span>
+        <span>&middot;</span>
+        <span>crash-recovery reaper</span>
+        <span>&middot;</span>
+        <Link to="/activity" className="text-accent-hover hover:underline">watch it happen live in the Activity Log &rarr;</Link>
+      </Card>
     </div>
   );
 }

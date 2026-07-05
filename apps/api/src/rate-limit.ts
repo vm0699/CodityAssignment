@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { envInt } from '@pulse/core';
+import { envInt, getPool, logSystemEvent } from '@pulse/core';
 
 interface Bucket {
   tokens: number;
@@ -40,6 +40,12 @@ export function rateLimiter() {
     if (bucket.tokens < 1) {
       res.setHeader('Retry-After', '10');
       res.status(429).json({ error: { code: 'RATE_LIMITED', message: 'Too many requests, slow down' } });
+      void logSystemEvent(getPool(), {
+        level: 'warn',
+        component: 'api.rate-limit',
+        message: `Rate limit exceeded for ${key.startsWith('t:') ? 'an authenticated client' : `IP ${req.ip}`} on ${req.method} ${req.path}`,
+        context: { path: req.path, method: req.method },
+      });
       return;
     }
     bucket.tokens -= 1;

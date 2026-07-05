@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import {
-  Activity, AlertOctagon, CalendarClock, Cpu, LayoutDashboard, List, Layers, LogOut, Zap,
+  Activity, AlertOctagon, CalendarClock, Cpu, LayoutDashboard, List, Layers, LogOut, Terminal, Zap,
 } from 'lucide-react';
 import { api, getToken, setToken } from './api';
 import { useLiveEvents } from './hooks';
@@ -13,6 +13,7 @@ import JobsPage from './pages/JobsPage';
 import WorkersPage from './pages/WorkersPage';
 import DlqPage from './pages/DlqPage';
 import SchedulesPage from './pages/SchedulesPage';
+import ActivityPage from './pages/ActivityPage';
 
 interface AppContextValue {
   user: User;
@@ -107,6 +108,7 @@ export default function App() {
     { to: '/schedules', label: 'Schedules', icon: CalendarClock },
     { to: '/workers', label: 'Workers', icon: Cpu },
     { to: '/dlq', label: 'Dead Letter', icon: AlertOctagon },
+    { to: '/activity', label: 'Activity Log', icon: Terminal },
   ];
 
   return (
@@ -177,6 +179,7 @@ export default function App() {
               <Route path="/schedules" element={<SchedulesPage />} />
               <Route path="/workers" element={<WorkersPage />} />
               <Route path="/dlq" element={<DlqPage />} />
+              <Route path="/activity" element={<ActivityPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           ) : (

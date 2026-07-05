@@ -66,6 +66,10 @@ export interface Schedule {
   job_type: string; payload: Record<string, unknown>; priority: number;
   status: 'active' | 'paused'; next_run_at: string; last_enqueued_at: string | null;
 }
+export interface SystemEvent {
+  id: number; level: 'debug' | 'info' | 'warn' | 'error'; component: string;
+  message: string; context: Record<string, unknown> | null; created_at: string;
+}
 export interface Overview {
   status_counts: Record<string, number>;
   jobs_last_hour: number; completed_last_hour: number; failed_attempts_last_hour: number;
