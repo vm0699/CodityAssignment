@@ -9,6 +9,7 @@ import {
   loadEnv,
   logSystemEvent,
   runMigrations,
+  sslConfigFor,
   startHealthServer,
   startKeepAlivePing,
 } from '@pulse/core';
@@ -39,7 +40,8 @@ let isLeader = false;
 async function tryBecomeLeader(): Promise<boolean> {
   try {
     if (!leaderClient) {
-      leaderClient = new pg.Client({ connectionString: env('DATABASE_URL') });
+      const connectionString = env('DATABASE_URL');
+      leaderClient = new pg.Client({ connectionString, ssl: sslConfigFor(connectionString) });
       leaderClient.on('error', () => {
         // Connection lost — leadership is gone with it.
         isLeader = false;

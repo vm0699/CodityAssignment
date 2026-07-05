@@ -9,12 +9,27 @@ pg.types.setTypeParser(20, (v) => Number.parseInt(v, 10));
 
 export type Db = pg.Pool | pg.PoolClient | pg.Client;
 
+/**
+ * Managed Postgres providers (Render, RDS, Supabase, etc.) require SSL on
+ * every connection, internal or external, and typically present a
+ * certificate not in Node's default trust store. Local/Docker Postgres has
+ * no SSL listener at all, so this only enables it for non-local hosts —
+ * needed for `npm run seed` pointed at a deployed database from a laptop.
+ */
+export function sslConfigFor(connectionString: string): { rejectUnauthorized: boolean } | undefined {
+  return /^postgres(?:ql)?:\/\/[^/]*@?(localhost|127\.0\.0\.1)/i.test(connectionString)
+    ? undefined
+    : { rejectUnauthorized: false };
+}
+
 let pool: pg.Pool | undefined;
 
 export function getPool(): pg.Pool {
   if (!pool) {
+    const connectionString = env('DATABASE_URL');
     pool = new pg.Pool({
-      connectionString: env('DATABASE_URL'),
+      connectionString,
+      ssl: sslConfigFor(connectionString),
       max: 10,
       idleTimeoutMillis: 30_000,
     });

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { sslConfigFor } from './db.js';
 import { createLogger } from './logger.js';
 import { logSystemEvent } from './repos/system-events.js';
 
@@ -20,7 +21,7 @@ const MIGRATION_LOCK_KEY = 0x50_55_4c_53; // "PULS"
  * schema_migrations ledger makes it idempotent.
  */
 export async function runMigrations(databaseUrl: string): Promise<string[]> {
-  const client = new pg.Client({ connectionString: databaseUrl });
+  const client = new pg.Client({ connectionString: databaseUrl, ssl: sslConfigFor(databaseUrl) });
   await client.connect();
   const applied: string[] = [];
   try {

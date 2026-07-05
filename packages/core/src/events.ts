@@ -1,5 +1,5 @@
 import pg from 'pg';
-import type { Db } from './db.js';
+import { sslConfigFor, type Db } from './db.js';
 import { env } from './env.js';
 import { createLogger } from './logger.js';
 import type { PulseEvent } from './types.js';
@@ -43,7 +43,8 @@ export async function subscribe(
 
   async function connect(): Promise<void> {
     if (closed) return;
-    client = new pg.Client({ connectionString: env('DATABASE_URL') });
+    const connectionString = env('DATABASE_URL');
+    client = new pg.Client({ connectionString, ssl: sslConfigFor(connectionString) });
     client.on('notification', (msg) => {
       if (msg.channel === channel) onMessage(msg.payload ?? '');
     });

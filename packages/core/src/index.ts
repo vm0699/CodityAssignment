@@ -1,6 +1,6 @@
 export * from './env.js';
 export * from './logger.js';
-export * from './db.js';
+export * from './db.js'; // includes sslConfigFor — shared TLS handling for managed Postgres
 export * from './migrate.js';
 export * from './types.js';
 export * from './state-machine.js';
