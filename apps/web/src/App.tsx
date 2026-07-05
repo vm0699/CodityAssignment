@@ -9,6 +9,7 @@ import { useLiveEvents } from './hooks';
 import { useToast } from './toast';
 import type { Org, Project, User } from './types';
 import { Button, ErrorNote, Field, HeartbeatLine, Modal, inputClass } from './ui';
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import OverviewPage from './pages/OverviewPage';
 import QueuesPage from './pages/QueuesPage';
@@ -177,7 +178,13 @@ export default function App() {
   }
 
   if (!authed || !user) {
-    return <LoginPage onAuthed={() => { setBooting(true); setAuthed(true); }} />;
+    return (
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage onAuthed={() => { setBooting(true); setAuthed(true); }} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
   }
 
   const ctx: AppContextValue = {

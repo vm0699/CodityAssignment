@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Zap } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Zap } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { post, setToken } from '../api';
 import { Button, ErrorNote, Field, inputClass } from '../ui';
 
 export default function LoginPage({ onAuthed }: { onAuthed: () => void }) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState<'login' | 'register'>(searchParams.get('mode') === 'register' ? 'register' : 'login');
   const [email, setEmail] = useState('demo@pulse.dev');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -39,10 +41,10 @@ export default function LoginPage({ onAuthed }: { onAuthed: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-50 p-4">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2">
+        <Link to="/" className="mb-6 flex items-center justify-center gap-2">
           <Zap size={28} className="text-accent" />
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Pulse</h1>
-        </div>
+        </Link>
         <div className="rounded-xl border border-surface-300 bg-white p-6 shadow-card">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">
             {mode === 'login' ? 'Sign in' : 'Create an account'}
@@ -89,6 +91,9 @@ export default function LoginPage({ onAuthed }: { onAuthed: () => void }) {
             {mode === 'login' ? "Don't have an account? Register" : 'Already registered? Sign in'}
           </button>
         </div>
+        <Link to="/" className="mt-5 flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-slate-600">
+          <ArrowLeft size={13} /> Back to home
+        </Link>
       </div>
     </div>
   );
