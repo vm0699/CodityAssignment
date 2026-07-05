@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
 import { useDocumentTitle, usePoll } from '../hooks';
 import type { Paginated, SystemEvent } from '../types';
-import { Card } from '../ui';
+import { Card, inputClass } from '../ui';
 
 const LEVEL_COLOR: Record<string, string> = {
   debug: 'text-slate-500',
@@ -54,12 +54,12 @@ export default function ActivityPage() {
   const components = useMemo(() => [...new Set((data?.data ?? []).map((e) => e.component))].sort(), [data]);
 
   return (
-    <div className="flex h-full flex-col gap-4 p-6">
+    <div className="flex h-full flex-col gap-4 p-4 sm:p-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-100">Activity log</h1>
+        <h1 className="text-xl font-semibold text-slate-900">Activity log</h1>
         <p className="max-w-3xl text-sm text-slate-500">
           A live feed of the platform&rsquo;s own operational machinery &mdash; atomic job claims
-          (<code className="text-slate-400">SKIP LOCKED</code>), worker heartbeats and reaper crash-recovery,
+          (<code className="rounded bg-surface-200 px-1 text-slate-600">SKIP LOCKED</code>), worker heartbeats and reaper crash-recovery,
           scheduler leader election, cron fires, rate-limit trips, and Dead Letter Queue moves. This is the
           concurrency and reliability engineering happening under the hood, not just what the rest of the UI shows.
         </p>
@@ -67,7 +67,7 @@ export default function ActivityPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <input
-          className="w-64 rounded-lg border border-surface-600 bg-surface-800 px-3 py-1.5 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-accent"
+          className={`${inputClass} !w-64`}
           placeholder="Filter by component or text&hellip;"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -79,8 +79,8 @@ export default function ActivityPage() {
               onClick={() => setFilter(filter === c ? '' : c)}
               className={`rounded-full px-2 py-0.5 text-xs ring-1 ring-inset transition ${
                 filter === c
-                  ? 'bg-accent/20 text-accent-hover ring-accent/40'
-                  : 'bg-surface-800 text-slate-400 ring-surface-600 hover:text-slate-200'
+                  ? 'bg-accent-soft text-accent ring-accent/30'
+                  : 'bg-white text-slate-500 ring-surface-300 hover:text-slate-800'
               }`}
             >
               {c}
@@ -89,28 +89,32 @@ export default function ActivityPage() {
         </div>
         <button
           onClick={() => setPaused((p) => !p)}
-          className={`ml-auto rounded-lg px-3 py-1.5 text-xs font-medium ${
-            paused ? 'bg-amber-500/15 text-amber-300' : 'bg-surface-700 text-slate-300 hover:bg-surface-600'
+          className={`ml-auto rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            paused ? 'bg-amber-50 text-amber-700' : 'bg-white text-slate-600 border border-surface-300 hover:bg-surface-100'
           }`}
         >
           {paused ? 'Resume auto-scroll' : 'Pause auto-scroll'}
         </button>
       </div>
 
-      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {/* Deliberately dark, terminal-style panel — a light gray-on-white log
+          feed reads poorly at density; this matches the convention of CI/
+          deploy log viewers (GitHub Actions, Vercel, Render) sitting inside
+          an otherwise light dashboard. */}
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden !border-slate-800 !bg-slate-900 !shadow-none">
         <div
           ref={scrollRef}
-          className="min-h-0 flex-1 overflow-y-auto bg-surface-950 p-4 font-mono text-xs leading-relaxed"
+          className="min-h-0 flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed"
         >
           {events.length === 0 && (
-            <div className="text-slate-600">
+            <div className="text-slate-500">
               No activity yet &mdash; start a worker (<code>npm run dev:worker</code>) and scheduler
               (<code>npm run dev:scheduler</code>) to see live events here.
             </div>
           )}
           {events.map((e) => (
             <div key={e.id} className="flex gap-2 py-0.5 hover:bg-white/5">
-              <span className="shrink-0 text-slate-600">{new Date(e.created_at).toLocaleTimeString()}</span>
+              <span className="shrink-0 text-slate-500">{new Date(e.created_at).toLocaleTimeString()}</span>
               <span className={`shrink-0 w-12 uppercase ${LEVEL_COLOR[e.level] ?? 'text-slate-400'}`}>{e.level}</span>
               <span className={`shrink-0 w-44 truncate ${COMPONENT_TONE[e.component] ?? 'text-slate-400'}`}>
                 {e.component}

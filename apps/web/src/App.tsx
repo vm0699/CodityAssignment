@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import {
-  Activity, AlertOctagon, CalendarClock, Cpu, LayoutDashboard, List, Layers, LogOut, Terminal, Zap,
+  Activity, AlertOctagon, CalendarClock, Cpu, LayoutDashboard, List, Layers, LogOut, Menu, Terminal, X, Zap,
 } from 'lucide-react';
 import { api, getToken, setToken } from './api';
 import { useLiveEvents } from './hooks';
@@ -40,6 +40,7 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectIdState] = useState<string | null>(() => localStorage.getItem('pulse_project'));
   const [booting, setBooting] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navigate = useNavigate();
 
   const setProjectId = useCallback((id: string) => {
@@ -90,7 +91,11 @@ export default function App() {
   const { tick: liveTick, connected: liveConnected } = useLiveEvents(authed && project ? project.id : null);
 
   if (booting) {
-    return <div className="flex h-screen items-center justify-center text-slate-500">Loading…</div>;
+    return (
+      <div className="flex h-screen items-center justify-center bg-surface-50 text-slate-400">
+        <Zap size={18} className="mr-2 animate-pulse text-accent" /> Loading&hellip;
+      </div>
+    );
   }
 
   if (!authed || !user) {
@@ -111,83 +116,122 @@ export default function App() {
     { to: '/activity', label: 'Activity Log', icon: Terminal },
   ];
 
+  const sidebarContent = (
+    <>
+      <div className="flex items-center justify-between px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Zap size={20} className="text-accent" />
+          <span className="text-lg font-bold tracking-tight text-slate-900">Pulse</span>
+        </div>
+        <button
+          className="rounded p-1 text-slate-400 hover:bg-surface-200 lg:hidden"
+          onClick={() => setMobileNavOpen(false)}
+        >
+          <X size={18} />
+        </button>
+      </div>
+      <div className="px-3 pb-2">
+        <select
+          className="w-full rounded-lg border border-surface-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15"
+          value={project?.id ?? ''}
+          onChange={(e) => { setProjectId(e.target.value); navigate('/'); setMobileNavOpen(false); }}
+        >
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+      </div>
+      <nav className="flex-1 space-y-0.5 px-3 py-2">
+        {nav.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            onClick={() => setMobileNavOpen(false)}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                isActive ? 'bg-accent-soft text-accent' : 'text-slate-500 hover:bg-surface-200 hover:text-slate-800'
+              }`
+            }
+          >
+            <Icon size={16} />
+            {label}
+          </NavLink>
+        ))}
+      </nav>
+      <div className="border-t border-surface-300 px-4 py-3">
+        <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
+          <Activity size={12} className={liveConnected ? 'text-emerald-500' : 'text-slate-300'} />
+          {liveConnected ? 'Live updates connected' : 'Polling (WS reconnecting)'}
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium text-slate-700">{user.name}</div>
+            <div className="truncate text-xs text-slate-400">{user.email}</div>
+          </div>
+          <button
+            title="Sign out"
+            className="rounded p-1.5 text-slate-400 hover:bg-surface-200 hover:text-slate-700"
+            onClick={() => { setToken(null); window.dispatchEvent(new Event('pulse:logout')); }}
+          >
+            <LogOut size={15} />
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <AppContext.Provider value={ctx}>
-      <div className="flex h-screen overflow-hidden">
-        {/* Sidebar */}
-        <aside className="flex w-56 shrink-0 flex-col border-r border-surface-800 bg-surface-900">
-          <div className="flex items-center gap-2 px-5 py-4">
-            <Zap size={20} className="text-accent" />
-            <span className="text-lg font-bold tracking-tight text-slate-100">Pulse</span>
-          </div>
-          <div className="px-3 pb-2">
-            <select
-              className="w-full rounded-lg border border-surface-700 bg-surface-800 px-2 py-1.5 text-sm text-slate-300 outline-none focus:border-accent"
-              value={project?.id ?? ''}
-              onChange={(e) => { setProjectId(e.target.value); navigate('/'); }}
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-          <nav className="flex-1 space-y-0.5 px-3 py-2">
-            {nav.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    isActive ? 'bg-accent/15 text-accent-hover' : 'text-slate-400 hover:bg-surface-800 hover:text-slate-200'
-                  }`
-                }
-              >
-                <Icon size={16} />
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="border-t border-surface-800 px-4 py-3">
-            <div className="mb-2 flex items-center gap-2 text-xs text-slate-500">
-              <Activity size={12} className={liveConnected ? 'text-emerald-400' : 'text-slate-600'} />
-              {liveConnected ? 'Live updates connected' : 'Polling (WS reconnecting)'}
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-slate-300">{user.name}</div>
-                <div className="truncate text-xs text-slate-600">{user.email}</div>
-              </div>
-              <button
-                title="Sign out"
-                className="rounded p-1.5 text-slate-500 hover:bg-surface-700 hover:text-slate-200"
-                onClick={() => { setToken(null); window.dispatchEvent(new Event('pulse:logout')); }}
-              >
-                <LogOut size={15} />
-              </button>
-            </div>
-          </div>
+      <div className="flex h-screen overflow-hidden bg-surface-50">
+        {/* Desktop sidebar */}
+        <aside className="hidden w-56 shrink-0 flex-col border-r border-surface-300 bg-surface-100 lg:flex">
+          {sidebarContent}
         </aside>
 
-        {/* Main */}
-        <main className="flex-1 overflow-y-auto">
-          {project ? (
-            <Routes>
-              <Route path="/" element={<OverviewPage />} />
-              <Route path="/queues" element={<QueuesPage />} />
-              <Route path="/jobs" element={<JobsPage />} />
-              <Route path="/schedules" element={<SchedulesPage />} />
-              <Route path="/workers" element={<WorkersPage />} />
-              <Route path="/dlq" element={<DlqPage />} />
-              <Route path="/activity" element={<ActivityPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          ) : (
-            <div className="flex h-full items-center justify-center text-slate-500">
-              No projects yet — create one from the API or seed the demo data.
-            </div>
-          )}
-        </main>
+        {/* Mobile slide-over sidebar */}
+        {mobileNavOpen && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <div className="absolute inset-0 bg-slate-900/30" onClick={() => setMobileNavOpen(false)} />
+            <aside className="relative flex h-full w-64 flex-col border-r border-surface-300 bg-surface-100 shadow-popover">
+              {sidebarContent}
+            </aside>
+          </div>
+        )}
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Mobile top bar */}
+          <div className="flex items-center gap-2 border-b border-surface-300 bg-surface-100 px-4 py-3 lg:hidden">
+            <button
+              className="rounded p-1.5 text-slate-500 hover:bg-surface-200"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <Menu size={20} />
+            </button>
+            <Zap size={18} className="text-accent" />
+            <span className="font-bold text-slate-900">Pulse</span>
+          </div>
+
+          {/* Main */}
+          <main className="flex-1 overflow-y-auto">
+            {project ? (
+              <Routes>
+                <Route path="/" element={<OverviewPage />} />
+                <Route path="/queues" element={<QueuesPage />} />
+                <Route path="/jobs" element={<JobsPage />} />
+                <Route path="/schedules" element={<SchedulesPage />} />
+                <Route path="/workers" element={<WorkersPage />} />
+                <Route path="/dlq" element={<DlqPage />} />
+                <Route path="/activity" element={<ActivityPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            ) : (
+              <div className="flex h-full items-center justify-center text-slate-400">
+                No projects yet — create one from the API or seed the demo data.
+              </div>
+            )}
+          </main>
+        </div>
       </div>
     </AppContext.Provider>
   );

@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Pause, Play, Plus, Settings2, Trash2 } from 'lucide-react';
 import { del, patch, post } from '../api';
 import { useApp } from '../App';
+import { useConfirm } from '../confirm';
 import { useDocumentTitle, usePoll } from '../hooks';
+import { useToast } from '../toast';
 import type { Queue, QueueStats, RetryPolicy } from '../types';
 import { Button, Card, Empty, ErrorNote, Field, Modal, inputClass, formatDuration } from '../ui';
 
@@ -10,6 +12,8 @@ export default function QueuesPage() {
   useDocumentTitle('Queues');
   const { project, liveTick } = useApp();
   const pid = project!.id;
+  const toast = useToast();
+  const confirm = useConfirm();
   const { data: queues, refetch } = usePoll<{ data: Queue[] }>(`/api/projects/${pid}/queues`, 8000, liveTick);
   const { data: stats } = usePoll<{ data: QueueStats[] }>(`/api/projects/${pid}/queues/stats`, 5000, liveTick);
   const { data: policies, refetch: refetchPolicies } = usePoll<{ data: RetryPolicy[] }>(`/api/projects/${pid}/retry-policies`, 30_000);
@@ -24,37 +28,45 @@ export default function QueuesPage() {
     try {
       await post(`/api/queues/${queue.id}/${queue.is_paused ? 'resume' : 'pause'}`);
       await refetch();
+      toast.show('success', `Queue "${queue.name}" ${queue.is_paused ? 'resumed' : 'paused'}.`);
     } catch (err) {
       setError((err as Error).message);
     }
   }
 
   async function remove(queue: Queue) {
-    if (!window.confirm(`Delete queue "${queue.name}" and ALL of its jobs? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete "${queue.name}"?`,
+      message: 'This permanently deletes the queue and ALL of its jobs. This cannot be undone.',
+      confirmLabel: 'Delete queue',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await del(`/api/queues/${queue.id}`);
       await refetch();
+      toast.show('success', `Queue "${queue.name}" deleted.`);
     } catch (err) {
       setError((err as Error).message);
     }
   }
 
   return (
-    <div className="space-y-5 p-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5 p-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-100">Queues</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Queues</h1>
           <p className="text-sm text-slate-500">Configuration, health and controls</p>
         </div>
         <Button onClick={() => setCreating(true)}><span className="flex items-center gap-1.5"><Plus size={15} /> New queue</span></Button>
       </div>
       <ErrorNote message={error} />
 
-      <Card>
+      <Card className="overflow-x-auto">
         {queues?.data.length ? (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-surface-700 text-left text-xs uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-400">
                 <th className="px-4 py-3">Queue</th>
                 <th className="px-3 py-3 text-right">Priority</th>
                 <th className="px-3 py-3 text-right">Concurrency</th>
@@ -71,33 +83,33 @@ export default function QueuesPage() {
                 const s = stats?.data.find((x) => x.queue_id === queue.id);
                 const policy = policies?.data.find((p) => p.id === queue.retry_policy_id);
                 return (
-                  <tr key={queue.id} className="border-b border-surface-800 last:border-0">
+                  <tr key={queue.id} className="border-b border-surface-200 last:border-0 hover:bg-surface-50">
                     <td className="px-4 py-3">
-                      <div className="font-medium text-slate-200">
+                      <div className="font-medium text-slate-800">
                         {queue.name}
-                        {queue.is_paused && <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-300">paused</span>}
+                        {queue.is_paused && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">paused</span>}
                       </div>
-                      {queue.description && <div className="text-xs text-slate-500">{queue.description}</div>}
+                      {queue.description && <div className="text-xs text-slate-400">{queue.description}</div>}
                     </td>
-                    <td className="px-3 py-3 text-right font-mono">{queue.priority}</td>
-                    <td className="px-3 py-3 text-right font-mono">{queue.max_concurrency}</td>
-                    <td className="px-3 py-3 text-right font-mono">{queue.rate_limit_per_second ? `${queue.rate_limit_per_second}/s` : '—'}</td>
-                    <td className="px-3 py-3 text-slate-400">{policy ? policy.name : 'system default'}</td>
-                    <td className="px-3 py-3 text-right font-mono">{s ? s.queued + s.scheduled : '—'}</td>
-                    <td className="px-3 py-3 text-right font-mono">{s ? s.claimed + s.running : '—'}</td>
-                    <td className="px-3 py-3 text-right font-mono">{s?.avg_duration_ms_24h ? formatDuration(s.avg_duration_ms_24h) : '—'}</td>
+                    <td className="px-3 py-3 text-right font-mono text-slate-700">{queue.priority}</td>
+                    <td className="px-3 py-3 text-right font-mono text-slate-700">{queue.max_concurrency}</td>
+                    <td className="px-3 py-3 text-right font-mono text-slate-700">{queue.rate_limit_per_second ? `${queue.rate_limit_per_second}/s` : '—'}</td>
+                    <td className="px-3 py-3 text-slate-500">{policy ? policy.name : 'system default'}</td>
+                    <td className="px-3 py-3 text-right font-mono text-slate-700">{s ? s.queued + s.scheduled : '—'}</td>
+                    <td className="px-3 py-3 text-right font-mono text-slate-700">{s ? s.claimed + s.running : '—'}</td>
+                    <td className="px-3 py-3 text-right font-mono text-slate-700">{s?.avg_duration_ms_24h ? formatDuration(s.avg_duration_ms_24h) : '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <button title={queue.is_paused ? 'Resume' : 'Pause'} onClick={() => void togglePause(queue)}
-                          className="rounded p-1.5 text-slate-400 hover:bg-surface-700 hover:text-slate-100">
+                          className="rounded p-1.5 text-slate-400 hover:bg-surface-200 hover:text-slate-800">
                           {queue.is_paused ? <Play size={15} /> : <Pause size={15} />}
                         </button>
                         <button title="Configure" onClick={() => setEditing(queue)}
-                          className="rounded p-1.5 text-slate-400 hover:bg-surface-700 hover:text-slate-100">
+                          className="rounded p-1.5 text-slate-400 hover:bg-surface-200 hover:text-slate-800">
                           <Settings2 size={15} />
                         </button>
                         <button title="Delete" onClick={() => void remove(queue)}
-                          className="rounded p-1.5 text-slate-400 hover:bg-red-500/20 hover:text-red-300">
+                          className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -113,20 +125,20 @@ export default function QueuesPage() {
       </Card>
 
       {/* Retry policies */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-semibold text-slate-200">Retry policies</h2>
+          <h2 className="font-semibold text-slate-800">Retry policies</h2>
           <p className="text-sm text-slate-500">Reusable backoff strategies queues can reference</p>
         </div>
         <Button variant="secondary" onClick={() => setCreatingPolicy(true)}>
           <span className="flex items-center gap-1.5"><Plus size={15} /> New policy</span>
         </Button>
       </div>
-      <Card>
+      <Card className="overflow-x-auto">
         {policies?.data.length ? (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-surface-700 text-left text-xs uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-surface-300 text-left text-xs uppercase tracking-wider text-slate-400">
                 <th className="px-4 py-3">Name</th>
                 <th className="px-3 py-3">Strategy</th>
                 <th className="px-3 py-3 text-right">Max attempts</th>
@@ -137,13 +149,13 @@ export default function QueuesPage() {
             </thead>
             <tbody>
               {policies.data.map((p) => (
-                <tr key={p.id} className="border-b border-surface-800 last:border-0">
-                  <td className="px-4 py-3 font-medium text-slate-200">{p.name}</td>
-                  <td className="px-3 py-3"><span className="rounded bg-surface-700 px-2 py-0.5 text-xs">{p.strategy}</span></td>
-                  <td className="px-3 py-3 text-right font-mono">{p.max_attempts}</td>
-                  <td className="px-3 py-3 text-right font-mono">{formatDuration(p.base_delay_ms)}</td>
-                  <td className="px-3 py-3 text-right font-mono">{formatDuration(p.max_delay_ms)}</td>
-                  <td className="px-3 py-3 text-right font-mono">{Math.round(p.jitter_factor * 100)}%</td>
+                <tr key={p.id} className="border-b border-surface-200 last:border-0 hover:bg-surface-50">
+                  <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
+                  <td className="px-3 py-3"><span className="rounded bg-surface-200 px-2 py-0.5 text-xs text-slate-600">{p.strategy}</span></td>
+                  <td className="px-3 py-3 text-right font-mono text-slate-700">{p.max_attempts}</td>
+                  <td className="px-3 py-3 text-right font-mono text-slate-700">{formatDuration(p.base_delay_ms)}</td>
+                  <td className="px-3 py-3 text-right font-mono text-slate-700">{formatDuration(p.max_delay_ms)}</td>
+                  <td className="px-3 py-3 text-right font-mono text-slate-700">{Math.round(p.jitter_factor * 100)}%</td>
                 </tr>
               ))}
             </tbody>
@@ -162,6 +174,7 @@ export default function QueuesPage() {
             await post(`/api/projects/${pid}/queues`, body);
             await refetch();
             setCreating(false);
+            toast.show('success', `Queue "${body.name}" created.`);
           }}
         />
       )}
@@ -175,6 +188,7 @@ export default function QueuesPage() {
             await patch(`/api/queues/${editing.id}`, body);
             await refetch();
             setEditing(null);
+            toast.show('success', 'Queue configuration saved.');
           }}
         />
       )}
@@ -185,6 +199,7 @@ export default function QueuesPage() {
             await post(`/api/projects/${pid}/retry-policies`, body);
             await refetchPolicies();
             setCreatingPolicy(false);
+            toast.show('success', `Retry policy "${body.name}" created.`);
           }}
         />
       )}

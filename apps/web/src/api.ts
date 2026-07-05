@@ -8,6 +8,19 @@ export class ApiRequestError extends Error {
   }
 }
 
+/** Turns the API's { message, details: [{path, message}] } envelope into one readable line. */
+function formatErrorMessage(err: { message?: string; details?: unknown }): string {
+  const base = err.message ?? 'Request failed';
+  if (Array.isArray(err.details) && err.details.length > 0) {
+    const parts = err.details
+      .filter((d): d is { path?: string; message?: string } => typeof d === 'object' && d !== null)
+      .map((d) => (d.path ? `${d.path}: ${d.message}` : d.message))
+      .filter(Boolean);
+    if (parts.length > 0) return `${base} — ${parts.join('; ')}`;
+  }
+  return base;
+}
+
 export function getToken(): string | null {
   return localStorage.getItem('pulse_token');
 }
@@ -31,7 +44,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
       setToken(null);
       window.dispatchEvent(new Event('pulse:logout'));
     }
-    throw new ApiRequestError(res.status, err.code ?? 'ERROR', err.message ?? `Request failed (${res.status})`, err.details);
+    throw new ApiRequestError(res.status, err.code ?? 'ERROR', formatErrorMessage(err), err.details);
   }
   return body as T;
 }

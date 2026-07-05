@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Zap } from 'lucide-react';
+import { Eye, EyeOff, Zap } from 'lucide-react';
 import { post, setToken } from '../api';
 import { Button, ErrorNote, Field, inputClass } from '../ui';
 
@@ -7,14 +7,21 @@ export default function LoginPage({ onAuthed }: { onAuthed: () => void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('demo@pulse.dev');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setError(null);
+    // Client-side pre-check so the user gets instant, specific feedback
+    // instead of a round-trip to the API for something checkable locally.
+    if (mode === 'register' && password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+    setBusy(true);
     try {
       const res =
         mode === 'login'
@@ -30,14 +37,14 @@ export default function LoginPage({ onAuthed }: { onAuthed: () => void }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center bg-surface-50 p-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-center gap-2">
           <Zap size={28} className="text-accent" />
-          <h1 className="text-2xl font-bold tracking-tight text-slate-100">Pulse</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Pulse</h1>
         </div>
-        <div className="rounded-xl border border-surface-700 bg-surface-900 p-6">
-          <h2 className="mb-4 text-lg font-semibold text-slate-100">
+        <div className="rounded-xl border border-surface-300 bg-white p-6 shadow-card">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">
             {mode === 'login' ? 'Sign in' : 'Create an account'}
           </h2>
           <form onSubmit={submit} className="space-y-3">
@@ -50,7 +57,25 @@ export default function LoginPage({ onAuthed }: { onAuthed: () => void }) {
               <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </Field>
             <Field label="Password" hint={mode === 'login' ? 'demo account: demo@pulse.dev / demo1234' : 'at least 8 characters'}>
-              <input className={inputClass} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <div className="relative">
+                <input
+                  className={`${inputClass} pr-9`}
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  minLength={mode === 'register' ? 8 : undefined}
+                  required
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
             </Field>
             <ErrorNote message={error} />
             <Button type="submit" disabled={busy} className="w-full">
@@ -58,8 +83,8 @@ export default function LoginPage({ onAuthed }: { onAuthed: () => void }) {
             </Button>
           </form>
           <button
-            className="mt-4 w-full text-center text-xs text-slate-500 hover:text-slate-300"
-            onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+            className="mt-4 w-full text-center text-xs text-slate-400 hover:text-slate-700"
+            onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(null); }}
           >
             {mode === 'login' ? "Don't have an account? Register" : 'Already registered? Sign in'}
           </button>

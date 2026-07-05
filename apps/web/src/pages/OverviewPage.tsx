@@ -26,9 +26,9 @@ export default function OverviewPage() {
   }));
 
   return (
-    <div className="space-y-5 p-6">
+    <div className="space-y-5 p-4 sm:p-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-100">Overview</h1>
+        <h1 className="text-xl font-semibold text-slate-900">Overview</h1>
         <p className="text-sm text-slate-500">{project!.name} — system health at a glance</p>
       </div>
 
@@ -47,8 +47,8 @@ export default function OverviewPage() {
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="p-4 lg:col-span-2">
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="font-semibold text-slate-200">Throughput (30 min)</h2>
-            <div className="text-xs text-slate-500">
+            <h2 className="font-semibold text-slate-800">Throughput (30 min)</h2>
+            <div className="text-xs text-slate-400">
               avg {overview?.avg_duration_ms_1h ? formatDuration(overview.avg_duration_ms_1h) : '—'} · p95{' '}
               {overview?.p95_duration_ms_1h ? formatDuration(overview.p95_duration_ms_1h) : '—'}
             </div>
@@ -58,40 +58,40 @@ export default function OverviewPage() {
               <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
                 <defs>
                   <linearGradient id="gComp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#34d399" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="gFail" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f87171" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="#f87171" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="#f43f5e" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#1f2a42" strokeDasharray="3 3" />
-                <XAxis dataKey="time" stroke="#475569" fontSize={11} tickLine={false} />
-                <YAxis stroke="#475569" fontSize={11} tickLine={false} allowDecimals={false} />
+                <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+                <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{ background: '#161e30', border: '1px solid #2b3a5c', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: '#94a3b8' }}
+                  contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 6px -4px rgb(15 23 42 / 0.1)' }}
+                  labelStyle={{ color: '#475569' }}
                 />
-                <Area type="monotone" dataKey="completed" stroke="#34d399" fill="url(#gComp)" strokeWidth={2} name="completed" />
-                <Area type="monotone" dataKey="failed" stroke="#f87171" fill="url(#gFail)" strokeWidth={2} name="failed" />
-                <Area type="monotone" dataKey="created" stroke="#818cf8" fill="none" strokeWidth={1.5} strokeDasharray="4 3" name="created" />
+                <Area type="monotone" dataKey="completed" stroke="#10b981" fill="url(#gComp)" strokeWidth={2} name="completed" />
+                <Area type="monotone" dataKey="failed" stroke="#f43f5e" fill="url(#gFail)" strokeWidth={2} name="failed" />
+                <Area type="monotone" dataKey="created" stroke="#6366f1" fill="none" strokeWidth={1.5} strokeDasharray="4 3" name="created" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
         <Card className="p-4">
-          <h2 className="mb-3 font-semibold text-slate-200">Job statuses</h2>
+          <h2 className="mb-3 font-semibold text-slate-800">Job statuses</h2>
           <div className="space-y-2">
             {(['running', 'queued', 'scheduled', 'completed', 'failed', 'dead_letter', 'cancelled'] as const).map((status) => (
               <div key={status} className="flex items-center justify-between text-sm">
                 <StatusBadge status={status} />
-                <span className="font-mono text-slate-300">{counts[status] ?? 0}</span>
+                <span className="font-mono text-slate-600">{counts[status] ?? 0}</span>
               </div>
             ))}
             {overview?.oldest_queued_age_seconds != null && overview.oldest_queued_age_seconds > 30 && (
-              <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                 Oldest queued job has waited {formatDuration(overview.oldest_queued_age_seconds * 1000)} — workers may be saturated.
               </div>
             )}
@@ -101,54 +101,56 @@ export default function OverviewPage() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card className="p-4">
-          <h2 className="mb-3 font-semibold text-slate-200">Queue depth</h2>
+          <h2 className="mb-3 font-semibold text-slate-800">Queue depth</h2>
           {stats?.data.length ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-slate-500">
-                  <th className="pb-2">Queue</th>
-                  <th className="pb-2 text-right">Queued</th>
-                  <th className="pb-2 text-right">Running</th>
-                  <th className="pb-2 text-right">Success (24h)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.data.map((s) => {
-                  const queue = queues?.data.find((q) => q.id === s.queue_id);
-                  return (
-                    <tr key={s.queue_id} className="border-t border-surface-800">
-                      <td className="py-2 text-slate-300">
-                        {queue?.name ?? s.queue_id.slice(0, 8)}
-                        {queue?.is_paused && <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-300">paused</span>}
-                      </td>
-                      <td className="py-2 text-right font-mono">{s.queued}</td>
-                      <td className="py-2 text-right font-mono">{s.running + s.claimed}</td>
-                      <td className="py-2 text-right font-mono">
-                        {s.success_rate_24h == null ? '—' : `${Math.round(s.success_rate_24h * 100)}%`}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wider text-slate-400">
+                    <th className="pb-2">Queue</th>
+                    <th className="pb-2 text-right">Queued</th>
+                    <th className="pb-2 text-right">Running</th>
+                    <th className="pb-2 text-right">Success (24h)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.data.map((s) => {
+                    const queue = queues?.data.find((q) => q.id === s.queue_id);
+                    return (
+                      <tr key={s.queue_id} className="border-t border-surface-200">
+                        <td className="py-2 text-slate-700">
+                          {queue?.name ?? s.queue_id.slice(0, 8)}
+                          {queue?.is_paused && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">paused</span>}
+                        </td>
+                        <td className="py-2 text-right font-mono text-slate-700">{s.queued}</td>
+                        <td className="py-2 text-right font-mono text-slate-700">{s.running + s.claimed}</td>
+                        <td className="py-2 text-right font-mono text-slate-700">
+                          {s.success_rate_24h == null ? '—' : `${Math.round(s.success_rate_24h * 100)}%`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <Empty message="No queues yet" />
           )}
         </Card>
 
         <Card className="p-4">
-          <h2 className="mb-3 font-semibold text-slate-200">Workers</h2>
+          <h2 className="mb-3 font-semibold text-slate-800">Workers</h2>
           {workers?.data.length ? (
             <div className="space-y-2">
               {workers.data.slice(0, 6).map((w) => (
-                <div key={w.id} className="flex items-center justify-between rounded-lg bg-surface-800/60 px-3 py-2 text-sm">
+                <div key={w.id} className="flex items-center justify-between rounded-lg bg-surface-50 px-3 py-2 text-sm">
                   <div className="flex items-center gap-2">
                     <span className={`h-2 w-2 rounded-full ${
-                      w.status === 'online' ? 'bg-emerald-400' : w.status === 'draining' ? 'bg-amber-400' : 'bg-red-400'
+                      w.status === 'online' ? 'bg-emerald-500' : w.status === 'draining' ? 'bg-amber-500' : 'bg-red-500'
                     }`} />
-                    <span className="font-mono text-xs text-slate-300">{w.name}</span>
+                    <span className="font-mono text-xs text-slate-700">{w.name}</span>
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-slate-400">
                     {w.running_jobs}/{w.concurrency} slots · hb {w.seconds_since_heartbeat}s ago
                   </div>
                 </div>
@@ -170,7 +172,7 @@ export default function OverviewPage() {
         <span>&middot;</span>
         <span>crash-recovery reaper</span>
         <span>&middot;</span>
-        <Link to="/activity" className="text-accent-hover hover:underline">watch it happen live in the Activity Log &rarr;</Link>
+        <Link to="/activity" className="font-medium text-accent hover:underline">watch it happen live in the Activity Log &rarr;</Link>
       </Card>
     </div>
   );
