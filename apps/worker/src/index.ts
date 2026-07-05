@@ -15,6 +15,8 @@ import {
   requeueOrphanedJobs,
   runMigrations,
   setWorkerStatus,
+  startHealthServer,
+  startKeepAlivePing,
   subscribe,
   WAKE_CHANNEL,
   withTransaction,
@@ -37,6 +39,13 @@ const REAPER_LOCK_KEY = 0x50524150; // "PRAP"
 if (process.env.RUN_MIGRATIONS !== 'false') {
   await runMigrations(env('DATABASE_URL'));
 }
+
+// Free-tier PaaS hosting (Render, etc.) only keeps "web service" deployments
+// alive perpetually, which requires binding to $PORT. The worker has no HTTP
+// API of its own, so this is purely a platform-compatibility health endpoint
+// — see packages/core/src/keepalive.ts and docs/DEPLOYMENT.md.
+if (process.env.PORT) startHealthServer(Number(process.env.PORT));
+if (process.env.RENDER_EXTERNAL_URL) startKeepAlivePing(process.env.RENDER_EXTERNAL_URL);
 
 const worker = await registerWorker(getPool(), {
   name: process.env.WORKER_NAME ?? `worker-${os.hostname()}-${process.pid}`,

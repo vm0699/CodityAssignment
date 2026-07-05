@@ -1,6 +1,17 @@
 import os from 'node:os';
 import pg from 'pg';
-import { closePool, createLogger, env, envInt, getPool, loadEnv, logSystemEvent, runMigrations } from '@pulse/core';
+import {
+  closePool,
+  createLogger,
+  env,
+  envInt,
+  getPool,
+  loadEnv,
+  logSystemEvent,
+  runMigrations,
+  startHealthServer,
+  startKeepAlivePing,
+} from '@pulse/core';
 import { materialiseCronSchedules, promoteDueJobs } from './tick.js';
 
 loadEnv();
@@ -15,6 +26,11 @@ const LEADER_LOCK_KEY = 0x50534348; // "PSCH"
 if (process.env.RUN_MIGRATIONS !== 'false') {
   await runMigrations(env('DATABASE_URL'));
 }
+
+// See apps/worker/src/index.ts and docs/DEPLOYMENT.md — same free-tier
+// hosting compatibility shim (bind $PORT, self-ping to stay warm).
+if (process.env.PORT) startHealthServer(Number(process.env.PORT));
+if (process.env.RENDER_EXTERNAL_URL) startKeepAlivePing(process.env.RENDER_EXTERNAL_URL);
 
 let leaderClient: pg.Client | null = null;
 let running = true;

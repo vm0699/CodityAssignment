@@ -37,6 +37,54 @@ that matter for a first deployment:
 | `ANTHROPIC_API_KEY` | unset | optional, enables AI failure summaries |
 | `VITE_API_URL` | `http://localhost:4000` | baked into the web build at build time |
 
+## Free-tier hosting (Render + Vercel)
+
+The whole platform is deployable at zero cost on Render (backend + Postgres)
+and Vercel (frontend). Live URLs, once deployed, are recorded at the top of
+[README.md](../README.md).
+
+**Backend — Render Blueprint ([render.yaml](../render.yaml)):**
+1. Push this repo to GitHub (must be reachable by Render — public repo is
+   simplest, no GitHub App install needed).
+2. Render dashboard → **New +** → **Blueprint** → paste the repo URL. Render
+   reads `render.yaml` and provisions four resources in one step: a free
+   Postgres instance (`pulse-db`) and three Docker-based web services
+   (`pulse-api`, `pulse-worker`, `pulse-scheduler`), each built from its own
+   `apps/*/Dockerfile` with `DATABASE_URL` wired automatically from the
+   database resource.
+3. After the API is live, copy its URL and set it as `VITE_API_URL` when
+   deploying the frontend (below); then update `pulse-api`'s `CORS_ORIGIN`
+   env var to the frontend's real Vercel origin and let it redeploy.
+
+**Free-tier trade-off, disclosed rather than hidden:** Render's free plan
+only keeps *web service* deployments alive indefinitely — background workers
+require a paid plan, and web services still spin down after ~15 minutes with
+no inbound HTTP traffic. `pulse-worker` and `pulse-scheduler` have no HTTP
+API of their own to receive that traffic, so `packages/core/src/keepalive.ts`
+gives them a bare `$PORT` health endpoint (satisfies Render's "web service"
+requirement) plus a self-ping of their own public URL every 10 minutes
+(`RENDER_EXTERNAL_URL`, which Render injects automatically) to prevent the
+idle spin-down. This keeps the full pipeline — claiming, retries, cron,
+reaper — running continuously at zero cost. The honest ceiling: if Render's
+platform-level maintenance restarts a free instance, there's no autoscaling
+or multi-region failover at this tier — acceptable for a demo/evaluation
+deployment, and documented here rather than glossed over. Upgrading
+`pulse-worker`/`pulse-scheduler` to Render's paid "Background Worker" type
+removes the need for the keep-alive shim entirely.
+
+**Frontend — Vercel:**
+```bash
+cd apps/web
+npx vercel --token <VERCEL_TOKEN> --yes --prod \
+  --build-env VITE_API_URL=https://<your-render-api>.onrender.com
+```
+`apps/web/vercel.json` sets the build/output directories and an SPA
+catch-all rewrite (`react-router`'s `BrowserRouter` needs every path to
+resolve to `index.html`). `apps/web` has no workspace-internal dependencies
+(it only imports npm packages), so Vercel can build it as a fully standalone
+project with its root directory set to `apps/web` — no monorepo-aware build
+configuration needed on Vercel's side.
+
 ## Local development
 
 ```bash

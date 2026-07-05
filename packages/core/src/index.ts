@@ -7,6 +7,7 @@ export * from './state-machine.js';
 export * from './retry.js';
 export * from './cron.js';
 export * from './events.js';
+export * from './keepalive.js';
 export * from './repos/users.js';
 export * from './repos/orgs.js';
 export * from './repos/projects.js';
