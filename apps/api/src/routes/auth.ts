@@ -1,16 +1,20 @@
 import bcrypt from 'bcryptjs';
 import { Router } from 'express';
 import {
+  createLogger,
   createOrganization,
   createUser,
   findUserByEmail,
   findUserById,
   getPool,
   listOrganizationsForUser,
+  provisionStarterWorkspace,
 } from '@pulse/core';
 import { requireAuth, signToken, type AuthedRequest } from '../auth.js';
 import { ApiError, asyncHandler } from '../errors.js';
 import { loginSchema, registerSchema } from '../validate.js';
+
+const log = createLogger({ component: 'auth' });
 
 export const authRouter = Router();
 
@@ -36,6 +40,13 @@ authRouter.post(
       slug: `${slugBase}-${user.id.slice(0, 8)}`,
       createdBy: user.id,
     });
+    // Best-effort: a populated dashboard on first login is a big part of the
+    // product experience, but must never block account creation if it fails.
+    try {
+      await provisionStarterWorkspace(pool, { orgId: org.id, userId: user.id });
+    } catch (err) {
+      log.error('failed to provision starter workspace', { userId: user.id, error: (err as Error).message });
+    }
     res.status(201).json({
       token: signToken(user),
       user: { id: user.id, email: user.email, name: user.name },

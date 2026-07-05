@@ -78,6 +78,52 @@ describe('auth', () => {
     expect(res.body.error.details.length).toBeGreaterThanOrEqual(2);
     expect(res.body.error.details[0]).toHaveProperty('path');
   });
+
+  it('auto-provisions a populated starter workspace so a brand-new account is never empty', async () => {
+    const email = `${uniq('starter')}@test.dev`;
+    const reg = await request(app)
+      .post('/api/auth/register')
+      .send({ email, name: 'New User', password: 'password123' })
+      .expect(201);
+    const token = reg.body.token;
+    const auth = (r: request.Test) => r.set('Authorization', `Bearer ${token}`);
+
+    const projects = await auth(request(app).get('/api/projects')).expect(200);
+    expect(projects.body.data).toHaveLength(1);
+    const project = projects.body.data[0];
+    expect(project.name).toBe('Getting Started');
+
+    const queues = await auth(request(app).get(`/api/projects/${project.id}/queues`)).expect(200);
+    expect(queues.body.data.map((q: { name: string }) => q.name).sort()).toEqual(['background', 'critical']);
+
+    const schedules = await auth(request(app).get(`/api/projects/${project.id}/schedules`)).expect(200);
+    expect(schedules.body.data).toHaveLength(1);
+
+    // Historical jobs across every lifecycle state, so Overview/pipeline/DLQ
+    // all show real data on first login, independent of whether a worker
+    // process happens to be running.
+    const jobs = await auth(request(app).get(`/api/projects/${project.id}/jobs`)).expect(200);
+    const byStatus: Record<string, number> = {};
+    for (const j of jobs.body.data as Array<{ status: string }>) byStatus[j.status] = (byStatus[j.status] ?? 0) + 1;
+    expect(byStatus.completed).toBe(5);
+    expect(byStatus.dead_letter).toBe(1);
+    expect(byStatus.queued).toBeGreaterThanOrEqual(1);
+
+    const dlq = await auth(request(app).get(`/api/projects/${project.id}/dlq`)).expect(200);
+    expect(dlq.body.data).toHaveLength(1);
+    expect(dlq.body.data[0].attempts_made).toBe(2);
+
+    const overview = await auth(request(app).get(`/api/projects/${project.id}/metrics/overview`)).expect(200);
+    expect(overview.body.status_counts.completed).toBe(5);
+    expect(overview.body.dead_letter_active).toBe(1);
+
+    // The "edit project" UI relies on this endpoint to rename/re-describe
+    // the auto-provisioned project — nothing about it is permanently fixed.
+    const renamed = await auth(request(app).patch(`/api/projects/${project.id}`))
+      .send({ name: 'My Renamed Project', description: 'Customized after registration' })
+      .expect(200);
+    expect(renamed.body.name).toBe('My Renamed Project');
+  });
 });
 
 describe('RBAC', () => {

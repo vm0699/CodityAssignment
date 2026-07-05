@@ -2,12 +2,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  AlertOctagon, CalendarClock, Cpu, LayoutDashboard, List, Layers, LogOut, Menu, Terminal, X, Zap,
+  AlertOctagon, CalendarClock, Cpu, LayoutDashboard, List, Layers, LogOut, Menu, Settings, Terminal, X, Zap,
 } from 'lucide-react';
-import { api, getToken, setToken } from './api';
+import { api, patch, getToken, setToken } from './api';
 import { useLiveEvents } from './hooks';
+import { useToast } from './toast';
 import type { Org, Project, User } from './types';
-import { HeartbeatLine } from './ui';
+import { Button, ErrorNote, Field, HeartbeatLine, Modal, inputClass } from './ui';
 import LoginPage from './pages/LoginPage';
 import OverviewPage from './pages/OverviewPage';
 import QueuesPage from './pages/QueuesPage';
@@ -61,6 +62,50 @@ function AnimatedRoutes() {
   );
 }
 
+/** Rename/describe the current project — including the auto-provisioned
+ * starter workspace every new account gets, so nothing is permanently
+ * hardcoded. */
+function EditProjectModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(project.name);
+  const [description, setDescription] = useState(project.description);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await patch(`/api/projects/${project.id}`, { name, description });
+      onSaved();
+      toast.show('success', 'Project updated.');
+      onClose();
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title="Edit project" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3">
+        <Field label="Name">
+          <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} required maxLength={100} />
+        </Field>
+        <Field label="Description">
+          <textarea className={`${inputClass} h-24`} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} />
+        </Field>
+        <ErrorNote message={error} />
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export default function App() {
   const [authed, setAuthed] = useState<boolean>(() => Boolean(getToken()));
   const [user, setUser] = useState<User | null>(null);
@@ -69,6 +114,7 @@ export default function App() {
   const [projectId, setProjectIdState] = useState<string | null>(() => localStorage.getItem('pulse_project'));
   const [booting, setBooting] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -162,7 +208,7 @@ export default function App() {
           <X size={18} />
         </button>
       </div>
-      <div className="px-3 pb-2">
+      <div className="flex items-center gap-1.5 px-3 pb-2">
         <select
           className="w-full rounded-lg border border-surface-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15"
           value={project?.id ?? ''}
@@ -172,6 +218,15 @@ export default function App() {
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
+        {project && (
+          <button
+            title="Edit project"
+            onClick={() => setEditingProject(true)}
+            className="shrink-0 rounded-lg border border-surface-300 p-1.5 text-slate-500 hover:bg-surface-200 hover:text-slate-800"
+          >
+            <Settings size={15} />
+          </button>
+        )}
       </div>
       <nav className="flex-1 space-y-0.5 px-3 py-2">
         {nav.map(({ to, label, icon: Icon }) => {
@@ -283,6 +338,14 @@ export default function App() {
           </main>
         </div>
       </div>
+
+      {editingProject && project && (
+        <EditProjectModal
+          project={project}
+          onClose={() => setEditingProject(false)}
+          onSaved={() => void refreshProjects()}
+        />
+      )}
     </AppContext.Provider>
   );
 }
